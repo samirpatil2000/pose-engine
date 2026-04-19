@@ -1,0 +1,2155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Image → Pose Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: rgba(255,255,255,0.04);
+    --surface-hover: rgba(255,255,255,0.07);
+    --border: rgba(255,255,255,0.08);
+    --border-focus: rgba(255,255,255,0.15);
+    --text-primary: rgba(255,255,255,0.92);
+    --text-secondary: rgba(255,255,255,0.55);
+    --text-tertiary: rgba(255,255,255,0.3);
+    --accent: #0A84FF;
+    --accent-glow: rgba(10,132,255,0.15);
+    --success: #30D158;
+    --success-glow: rgba(48,209,88,0.12);
+    --error: #FF453A;
+    --warning: #FF9F0A;
+    --purple: #BF5AF2;
+    --purple-glow: rgba(191,90,242,0.15);
+    --radius: 14px;
+    --radius-sm: 10px;
+    --radius-xs: 8px;
+    --transition: 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+    --transition-spring: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── TOP BAR ─── */
+  #topbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: rgba(10,10,10,0.85);
+    backdrop-filter: blur(40px) saturate(1.8);
+    -webkit-backdrop-filter: blur(40px) saturate(1.8);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .logo-icon {
+    width: 24px; height: 24px;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+  }
+
+  .divider {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    margin: 0 8px;
+  }
+
+  .spacer { flex: 1; }
+
+  /* ─── STEP INDICATORS ─── */
+  .step-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    letter-spacing: 0.3px;
+    transition: all var(--transition);
+  }
+
+  .step-indicator .step-num {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    margin-right: 4px;
+    transition: all var(--transition);
+  }
+
+  .step-indicator.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-glow);
+  }
+
+  .step-indicator.active .step-num {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .step-indicator.done {
+    border-color: rgba(48,209,88,0.3);
+    color: var(--success);
+    background: var(--success-glow);
+  }
+
+  .step-indicator.done .step-num {
+    background: var(--success);
+    color: #fff;
+  }
+
+  .step-arrow {
+    color: var(--text-tertiary);
+    font-size: 12px;
+    margin: 0 2px;
+  }
+
+  .topbar-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    background: var(--surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition);
+    letter-spacing: -0.1px;
+  }
+
+  .topbar-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+    border-color: var(--border-focus);
+  }
+
+  .topbar-btn.primary {
+    background: var(--accent);
+    border-color: transparent;
+    color: #fff;
+  }
+
+  .topbar-btn.primary:hover {
+    background: #0977E5;
+    box-shadow: 0 0 20px var(--accent-glow);
+  }
+
+  .topbar-btn.active {
+    background: var(--accent-glow);
+    color: var(--accent);
+    border-color: rgba(10,132,255,0.4);
+    box-shadow: 0 0 15px var(--accent-glow);
+  }
+
+  .topbar-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .topbar-btn svg {
+    width: 15px; height: 15px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* ─── MAIN LAYOUT ─── */
+  #main { display: flex; flex: 1; overflow: hidden; position: relative; }
+
+  /* ─── LEFT: IMAGE PANEL ─── */
+  #imagePanel {
+    width: 380px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: rgba(18,18,20,0.95);
+    backdrop-filter: blur(20px);
+    border-right: 1px solid var(--border);
+    overflow: hidden;
+    transition: width var(--transition), opacity var(--transition);
+  }
+
+  #imagePanel.hidden {
+    width: 0;
+    opacity: 0;
+    border-right-color: transparent;
+  }
+
+  .panel-header {
+    padding: 14px 18px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .panel-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  .panel-badge {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-weight: 500;
+  }
+
+  .panel-badge.info {
+    background: var(--accent-glow);
+    color: var(--accent);
+  }
+
+  .panel-badge.success {
+    background: var(--success-glow);
+    color: var(--success);
+  }
+
+  /* ─── DROP ZONE ─── */
+  .image-drop {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    cursor: pointer;
+    position: relative;
+    transition: all var(--transition);
+  }
+
+  .image-drop.has-image {
+    padding: 12px;
+    justify-content: flex-start;
+  }
+
+  .image-drop.dragover {
+    background: var(--accent-glow);
+  }
+
+  .image-drop input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 2;
+  }
+
+  .image-drop.has-image input[type="file"] {
+    display: none;
+  }
+
+  .drop-placeholder {
+    text-align: center;
+  }
+
+  .drop-placeholder .drop-icon {
+    width: 64px; height: 64px;
+    margin: 0 auto 16px;
+    background: linear-gradient(135deg, var(--accent-glow), var(--purple-glow));
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+  }
+
+  .drop-placeholder .drop-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .drop-placeholder .drop-hint {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    line-height: 1.5;
+  }
+
+  .drop-placeholder .drop-formats {
+    margin-top: 16px;
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+  }
+
+  .format-tag {
+    padding: 3px 8px;
+    font-size: 10px;
+    font-weight: 600;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* Image preview */
+  #imagePreview {
+    display: none;
+    width: 100%;
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #imagePreview.visible { display: flex; flex-direction: column; }
+
+  #imagePreview img {
+    width: 100%;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
+    max-height: 300px;
+  }
+
+  #imagePreview canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    pointer-events: none;
+    max-height: 300px;
+    object-fit: contain;
+  }
+
+  /* Stats below preview */
+  .landmark-stats {
+    margin-top: 12px;
+    padding: 12px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    max-height: 200px;
+    overflow-y: auto;
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+
+  .landmark-stats::-webkit-scrollbar { width: 4px; }
+  .landmark-stats::-webkit-scrollbar-track { background: transparent; }
+  .landmark-stats::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+
+  /* Action bar below image panel */
+  .image-actions {
+    padding: 12px 18px;
+    display: flex;
+    gap: 8px;
+    border-top: 1px solid var(--border);
+    background: rgba(0,0,0,0.2);
+  }
+
+  .action-btn {
+    flex: 1;
+    padding: 10px 0;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    border: none;
+    border-radius: var(--radius-xs);
+    cursor: pointer;
+    transition: all var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .action-btn.extract {
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    color: #fff;
+  }
+
+  .action-btn.extract:hover {
+    box-shadow: 0 4px 20px var(--accent-glow), 0 4px 20px var(--purple-glow);
+    transform: translateY(-1px);
+  }
+
+  .action-btn.extract:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .action-btn.reset-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    flex: 0.4;
+  }
+
+  .action-btn.reset-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+  }
+
+  /* ─── VIEWPORT (3D) ─── */
+  #viewport { flex: 1; position: relative; overflow: hidden; }
+  #threeCanvas { display: block; width: 100%; height: 100%; }
+
+  #hint {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    color: var(--text-tertiary);
+    pointer-events: none;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  /* ─── LOADING OVERLAY ─── */
+  #loadingOverlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    z-index: 300;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+  }
+
+  #loadingOverlay.visible { display: flex; }
+
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid rgba(255,255,255,0.1);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #loadingText {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  /* ─── AXES LEGEND ─── */
+  #axesLegend {
+    position: absolute;
+    bottom: 24px;
+    left: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px;
+    background: rgba(10,10,10,0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    pointer-events: none;
+    z-index: 50;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'SF Mono', monospace;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .legend-color {
+    width: 3px; height: 12px;
+    border-radius: 1px;
+  }
+
+  .legend-color.x { background: #FF453A; box-shadow: 0 0 8px rgba(255,69,58,0.4); }
+  .legend-color.y { background: #30D158; box-shadow: 0 0 8px rgba(48,209,88,0.4); }
+  .legend-color.z { background: #0A84FF; box-shadow: 0 0 8px rgba(10,132,255,0.4); }
+
+  /* ─── TOAST ─── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(60px);
+    padding: 10px 20px;
+    background: rgba(28,28,30,0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    z-index: 10000;
+    opacity: 0;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+  }
+
+  .toast.visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+
+  /* ─── BONE PANEL ─── */
+  #bonePanel {
+    width: 260px;
+    flex-shrink: 0;
+    background: rgba(18,18,20,0.95);
+    backdrop-filter: blur(20px);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform: translateX(0);
+    transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1), opacity var(--transition);
+  }
+
+  #bonePanel.hidden {
+    transform: translateX(100%);
+    opacity: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    pointer-events: none;
+  }
+
+  #bonePanelHeader {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  #boneSearch {
+    width: 100%;
+    margin-top: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-family: inherit;
+    border-radius: var(--radius-xs);
+    border: 1px solid var(--border);
+    background: rgba(0,0,0,0.3);
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color var(--transition);
+  }
+
+  #boneSearch::placeholder { color: var(--text-tertiary); }
+  #boneSearch:focus { border-color: var(--accent); }
+
+  #boneList {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0;
+  }
+
+  #boneList::-webkit-scrollbar { width: 4px; }
+  #boneList::-webkit-scrollbar-track { background: transparent; }
+  #boneList::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+
+  .bone-item {
+    padding: 7px 16px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-secondary);
+    border-left: 2px solid transparent;
+    transition: all 0.12s ease;
+  }
+
+  .bone-item:hover { background: var(--surface-hover); color: var(--text-primary); }
+
+  .bone-item.selected {
+    background: var(--accent-glow);
+    color: var(--accent);
+    border-left-color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* ─── BONE EDITOR ─── */
+  #boneEditor {
+    border-top: 1px solid var(--border);
+    padding: 14px 16px;
+    background: rgba(0,0,0,0.2);
+  }
+
+  #boneEditorTitle {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+  }
+
+  .axis-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+
+  .axis-label {
+    font-size: 11px;
+    font-weight: 700;
+    width: 14px;
+    text-align: center;
+    flex-shrink: 0;
+    font-family: 'SF Mono', monospace;
+  }
+
+  .axis-label.x { color: #FF453A; }
+  .axis-label.y { color: #30D158; }
+  .axis-label.z { color: #0A84FF; }
+
+  .axis-row input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.08);
+    outline: none;
+  }
+
+  .axis-row input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    cursor: pointer;
+  }
+
+  .axis-val {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    width: 38px;
+    text-align: right;
+    flex-shrink: 0;
+    font-family: 'SF Mono', monospace;
+  }
+
+  #resetBoneBtn {
+    width: 100%;
+    margin-top: 8px;
+    padding: 7px;
+    font-size: 12px;
+    font-family: inherit;
+    font-weight: 500;
+    background: rgba(255,69,58,0.08);
+    border: 1px solid rgba(255,69,58,0.15);
+    color: var(--error);
+    border-radius: var(--radius-xs);
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+
+  #resetBoneBtn:hover {
+    background: rgba(255,69,58,0.15);
+  }
+
+  /* ─── EXPORT MODAL ─── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(8px);
+    z-index: 9998;
+  }
+
+  .modal-overlay.visible { display: block; }
+
+  .modal-box {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.95);
+    background: rgba(28,28,30,0.95);
+    backdrop-filter: blur(60px);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    width: 540px;
+    max-width: 95vw;
+    z-index: 9999;
+    box-shadow: 0 40px 120px rgba(0,0,0,0.6);
+    animation: modalIn 0.3s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+  }
+
+  .modal-box.visible { display: block; }
+
+  .modal-box h3 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .modal-box .modal-subtitle {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-bottom: 16px;
+  }
+
+  .modal-box textarea {
+    width: 100%;
+    height: 220px;
+    background: rgba(0,0,0,0.4);
+    color: rgba(125,211,252,0.9);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    resize: none;
+    outline: none;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    justify-content: flex-end;
+  }
+
+  .modal-actions button {
+    padding: 8px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    border-radius: var(--radius-xs);
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+
+  #modalCopyBtn {
+    background: var(--accent);
+    border: none;
+    color: #fff;
+  }
+
+  #modalCopyBtn:hover { background: #0977E5; }
+
+  #modalCloseBtn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+
+  #modalCloseBtn:hover { background: var(--surface-hover); color: var(--text-primary); }
+
+  @keyframes modalIn {
+    from { opacity: 0; transform: translate(-50%, -50%) scale(0.92); }
+    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="logo">
+    <div class="logo-icon">📷</div>
+    Image → Pose
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Step indicators -->
+  <div class="step-indicator active" id="step1">
+    <span class="step-num">1</span>
+    Upload Image
+  </div>
+  <span class="step-arrow">→</span>
+  <div class="step-indicator" id="step2">
+    <span class="step-num">2</span>
+    Extract Pose
+  </div>
+  <span class="step-arrow">→</span>
+  <div class="step-indicator" id="step3">
+    <span class="step-num">3</span>
+    Apply to Model
+  </div>
+
+  <div class="spacer"></div>
+
+  <button class="topbar-btn active" id="toggleImageBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+    Image
+  </button>
+
+  <button class="topbar-btn" id="toggleBonesBtn">
+    <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+    Bones
+  </button>
+
+  <button class="topbar-btn" id="togglePointsBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="5" cy="12" r="3"/><circle cx="19" cy="12" r="3"/></svg>
+    Points
+  </button>
+
+  <button class="topbar-btn" id="exportJsonBtn" disabled>
+    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Export JSON
+  </button>
+
+  <button class="topbar-btn primary" id="exportGlbBtn" disabled>
+    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Export GLB
+  </button>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- LEFT: Image Panel -->
+  <div id="imagePanel">
+    <div class="panel-header">
+      <span class="panel-title">Source Image</span>
+      <span class="panel-badge info" id="panelBadge">Waiting</span>
+    </div>
+
+    <div class="image-drop" id="imageDrop">
+      <input type="file" accept="image/*" id="imageInput"/>
+
+      <div class="drop-placeholder" id="dropPlaceholder">
+        <div class="drop-icon">🖼️</div>
+        <div class="drop-title">Drop your image here</div>
+        <div class="drop-hint">or click to browse files</div>
+        <div class="drop-formats">
+          <span class="format-tag">JPG</span>
+          <span class="format-tag">PNG</span>
+          <span class="format-tag">WEBP</span>
+        </div>
+      </div>
+
+      <div id="imagePreview">
+        <img id="previewImg" alt="Uploaded image"/>
+        <canvas id="overlayCanvas"></canvas>
+      </div>
+
+      <div class="landmark-stats" id="landmarkStats" style="display:none;"></div>
+    </div>
+
+    <div class="image-actions">
+      <button class="action-btn reset-btn" id="resetBtn" disabled>
+        ↻ Reset
+      </button>
+      <button class="action-btn extract" id="extractBtn" disabled>
+        ✨ Extract & Apply Pose
+      </button>
+    </div>
+  </div>
+
+  <!-- RIGHT: 3D Viewport -->
+  <div id="viewport">
+    <canvas id="threeCanvas"></canvas>
+    <div id="hint">Drag to orbit · Scroll to zoom</div>
+
+    <div id="axesLegend">
+      <div class="legend-item"><div class="legend-color x"></div> X Axis</div>
+      <div class="legend-item"><div class="legend-color y"></div> Y Axis</div>
+      <div class="legend-item"><div class="legend-color z"></div> Z Axis</div>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loadingOverlay">
+      <div class="spinner"></div>
+      <span id="loadingText">Initializing MediaPipe…</span>
+    </div>
+  </div>
+
+  <!-- BONE PANEL -->
+  <div id="bonePanel" class="hidden">
+    <div id="bonePanelHeader">
+      Bones
+      <input id="boneSearch" type="text" placeholder="Search…"/>
+    </div>
+    <div id="boneList"></div>
+    <div id="boneEditor">
+      <div id="boneEditorTitle">Select a bone</div>
+      <div id="axisControls" style="display:none;">
+        <div class="axis-row">
+          <span class="axis-label x">X</span>
+          <input type="range" id="rx" min="-3.14" max="3.14" step="0.01" value="0"/>
+          <span class="axis-val" id="rxVal">0.00</span>
+        </div>
+        <div class="axis-row">
+          <span class="axis-label y">Y</span>
+          <input type="range" id="ry" min="-3.14" max="3.14" step="0.01" value="0"/>
+          <span class="axis-val" id="ryVal">0.00</span>
+        </div>
+        <div class="axis-row">
+          <span class="axis-label z">Z</span>
+          <input type="range" id="rz" min="-3.14" max="3.14" step="0.01" value="0"/>
+          <span class="axis-val" id="rzVal">0.00</span>
+        </div>
+        <button id="resetBoneBtn">Reset Bone</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div class="modal-overlay" id="exportOverlay"></div>
+<div class="modal-box" id="exportBox">
+  <h3>Pose JSON</h3>
+  <div class="modal-subtitle">Mixamo-compatible bone rotations</div>
+  <textarea id="exportText" readonly></textarea>
+  <div class="modal-actions">
+    <button id="modalCloseBtn">Close</button>
+    <button id="modalCopyBtn">Copy to Clipboard</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span id="toastIcon"></span>
+  <span id="toastText"></span>
+</div>
+
+<!-- Three.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+
+<!-- MediaPipe -->
+<script type="module">
+import { FilesetResolver, PoseLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+
+(async function(){
+
+/* ═══════════════════════════════════════════════
+   STATE
+   ═══════════════════════════════════════════════ */
+
+let scene, camera, renderer, model;
+let boneMap = {};
+let tPoseData = {};
+let currentMixamoOutput = null;
+
+let selectedBone = null;
+let currentPoseRotations = {};
+let boneIndicator = null;
+let boneIndicatorRing = null;
+let skeletonHelper = null;
+let allBoneIndicators = {};
+let pointsGroup = null;
+let showAllPoints = false;
+
+let poseLandmarker = null;
+let uploadedImage = null;
+let clock = new THREE.Clock();
+
+// Camera orbit
+let isDragging = false, lastMouse = {x:0, y:0};
+let sph = {theta: 0.3, phi: 1.1, radius: 2.8};
+let target = new THREE.Vector3(0, 1, 0);
+
+
+/* ═══════════════════════════════════════════════
+   STEP MANAGEMENT
+   ═══════════════════════════════════════════════ */
+
+function setStep(n) {
+  ['step1','step2','step3'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    el.className = 'step-indicator';
+    if (i + 1 < n) el.classList.add('done');
+    else if (i + 1 === n) el.classList.add('active');
+  });
+}
+
+
+/* ═══════════════════════════════════════════════
+   THREE.JS SETUP
+   ═══════════════════════════════════════════════ */
+
+function initThree() {
+  const canvas = document.getElementById('threeCanvas');
+  const vp = document.getElementById('viewport');
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0a0a);
+
+  const w = vp.clientWidth, h = vp.clientHeight;
+  camera = new THREE.PerspectiveCamera(45, w/h, 0.01, 100);
+  updateCamera();
+
+  renderer = new THREE.WebGLRenderer({canvas, antialias: true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+
+  // Floor
+  const floorGeo = new THREE.PlaneGeometry(20, 20);
+  const floorMat = new THREE.MeshBasicMaterial({color: 0x0d0d0d, transparent: true, opacity: 0.5});
+  const floor = new THREE.Mesh(floorGeo, floorMat);
+  floor.rotation.x = -Math.PI/2;
+  floor.position.y = -0.01;
+  scene.add(floor);
+
+  // Lights
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  const d = new THREE.DirectionalLight(0xffffff, 1.0); d.position.set(2,4,3); scene.add(d);
+  const f = new THREE.DirectionalLight(0xffffff, 0.25); f.position.set(-2,1,-3); scene.add(f);
+  const r = new THREE.DirectionalLight(0xeeeeff, 0.15); r.position.set(0,0,4); scene.add(r);
+
+  // Axes
+  scene.add(new THREE.AxesHelper(1));
+
+  setupOrbit(canvas);
+  window.addEventListener('resize', onResize);
+  loop();
+}
+
+function loop() {
+  requestAnimationFrame(loop);
+  const elapsed = clock.getElapsedTime();
+
+  // Update all points if visible
+  if(pointsGroup && pointsGroup.visible){
+    for(const name in allBoneIndicators){
+      if(boneMap[name]){
+        const worldPos = new THREE.Vector3();
+        boneMap[name].getWorldPosition(worldPos);
+        allBoneIndicators[name].position.copy(worldPos);
+      }
+    }
+  }
+
+  // Animate bone indicator
+  if(boneIndicator && boneIndicator.visible){
+    const pulse = 1 + 0.3 * Math.sin(elapsed * 4);
+    boneIndicator.scale.setScalar(pulse);
+    if(boneIndicatorRing){
+      const ringPulse = 1 + 0.5 * Math.sin(elapsed * 3);
+      boneIndicatorRing.scale.setScalar(ringPulse);
+      boneIndicatorRing.material.opacity = 0.15 + 0.1 * Math.sin(elapsed * 4);
+    }
+    if(selectedBone && boneMap[selectedBone]){
+      const worldPos = new THREE.Vector3();
+      boneMap[selectedBone].getWorldPosition(worldPos);
+      boneIndicator.position.copy(worldPos);
+      if(boneIndicatorRing) boneIndicatorRing.position.copy(worldPos);
+    }
+  }
+
+  if (skeletonHelper) skeletonHelper.update();
+  renderer.render(scene, camera);
+}
+
+function onResize() {
+  const vp = document.getElementById('viewport');
+  const w = vp.clientWidth, h = vp.clientHeight;
+  camera.aspect = w/h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+
+function updateCamera() {
+  camera.position.set(
+    target.x + sph.radius * Math.sin(sph.phi) * Math.sin(sph.theta),
+    target.y + sph.radius * Math.cos(sph.phi),
+    target.z + sph.radius * Math.sin(sph.phi) * Math.cos(sph.theta)
+  );
+  camera.lookAt(target);
+}
+
+function setupOrbit(canvas) {
+  let wasDragged = false;
+  canvas.addEventListener('mousedown', e => {
+    isDragging = true;
+    wasDragged = false;
+    lastMouse = {x: e.clientX, y: e.clientY};
+  });
+  window.addEventListener('mouseup', () => isDragging = false);
+  window.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    if(Math.abs(e.clientX-lastMouse.x) > 2 || Math.abs(e.clientY-lastMouse.y) > 2) wasDragged = true;
+    sph.theta -= (e.clientX - lastMouse.x) * 0.01;
+    sph.phi = Math.max(0.2, Math.min(Math.PI - 0.2, sph.phi - (e.clientY - lastMouse.y) * 0.01));
+    lastMouse = {x: e.clientX, y: e.clientY};
+    updateCamera();
+  });
+  canvas.addEventListener('wheel', e => {
+    sph.radius = Math.max(0.5, Math.min(10, sph.radius + e.deltaY * 0.005));
+    updateCamera();
+    e.preventDefault();
+  }, {passive: false});
+
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+  canvas.addEventListener('click', e => {
+    if(wasDragged) return;
+    if(!pointsGroup || !pointsGroup.visible) return;
+
+    const rect = canvas.getBoundingClientRect();
+    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(pointsGroup.children);
+    if(intersects.length > 0){
+      const boneName = intersects[0].object.userData.boneName;
+      if(boneName) {
+        selectBone(boneName);
+        document.getElementById('bonePanel').classList.remove('hidden');
+        document.getElementById('toggleBonesBtn').classList.add('active');
+        onResize();
+      }
+    }
+  });
+}
+
+
+/* ═══════════════════════════════════════════════
+   MODEL LOADING
+   ═══════════════════════════════════════════════ */
+
+async function loadModelAndTPose() {
+  showLoading('Loading 3D model…');
+  try {
+    const glbRes = await fetch('lady-x-bot.glb');
+    const tposeRes = await fetch('extract-t-pose.json');
+
+    if (!glbRes.ok || !tposeRes.ok) throw new Error('Files not found');
+
+    const glbBuffer = await glbRes.arrayBuffer();
+    tPoseData = await tposeRes.json();
+    await parseGLB(glbBuffer);
+    applyTPose();
+
+    const boneCount = Object.keys(boneMap).length;
+    populateBoneList('');
+    showToast('✅', 'Model loaded — ' + boneCount + ' bones');
+  } catch (err) {
+    console.error('Model load error:', err);
+    showToast('⚠️', 'Could not auto-load model files');
+  }
+  hideLoading();
+}
+
+async function parseGLB(buffer) {
+  return new Promise((resolve, reject) => {
+    const loader = new THREE.GLTFLoader();
+    loader.parse(buffer, '', gltf => {
+      if (model) scene.remove(model);
+      model = gltf.scene;
+      scene.add(model);
+
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      const ctr = box.getCenter(new THREE.Vector3());
+      const sc = 1.8 / Math.max(size.x, size.y, size.z);
+      model.scale.setScalar(sc);
+      model.position.sub(ctr.multiplyScalar(sc));
+      model.position.y -= box.min.y * sc;
+
+      target.set(0, size.y * sc * 0.5, 0);
+      sph.radius = Math.max(size.x, size.y, size.z) * sc * 1.6;
+      updateCamera();
+
+      boneMap = {};
+      model.traverse(o => {
+        if (o.isBone) {
+          boneMap[o.name] = o;
+          currentPoseRotations[o.name] = {x:o.rotation.x, y:o.rotation.y, z:o.rotation.z};
+        }
+      });
+
+      // Create visual helpers
+      createBoneIndicator();
+      createSkeletonHelper();
+
+      resolve();
+    }, reject);
+  });
+}
+
+function createBoneIndicator(){
+  if(boneIndicator) scene.remove(boneIndicator);
+  if(boneIndicatorRing) scene.remove(boneIndicatorRing);
+  if(pointsGroup) scene.remove(pointsGroup);
+
+  pointsGroup = new THREE.Group();
+  pointsGroup.visible = showAllPoints;
+  scene.add(pointsGroup);
+  allBoneIndicators = {};
+
+  const unselectedGeo = new THREE.SphereGeometry(0.014, 12, 12);
+  const unselectedMat = new THREE.MeshBasicMaterial({ color: 0x30D158, transparent: true, opacity: 0.65, depthTest: false });
+
+  for(const name in boneMap){
+    const mesh = new THREE.Mesh(unselectedGeo, unselectedMat);
+    mesh.renderOrder = 997;
+    mesh.userData.boneName = name;
+    pointsGroup.add(mesh);
+    allBoneIndicators[name] = mesh;
+  }
+
+  const sphereGeo = new THREE.SphereGeometry(0.018, 16, 16);
+  const sphereMat = new THREE.MeshBasicMaterial({ color: 0x0A84FF, transparent: true, opacity: 0.9, depthTest: false });
+  boneIndicator = new THREE.Mesh(sphereGeo, sphereMat);
+  boneIndicator.renderOrder = 999;
+  boneIndicator.visible = false;
+  scene.add(boneIndicator);
+
+  const ringGeo = new THREE.RingGeometry(0.025, 0.04, 32);
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0x0A84FF, transparent: true, opacity: 0.2, side: THREE.DoubleSide, depthTest: false });
+  boneIndicatorRing = new THREE.Mesh(ringGeo, ringMat);
+  boneIndicatorRing.renderOrder = 998;
+  boneIndicatorRing.visible = false;
+  scene.add(boneIndicatorRing);
+}
+
+function showBoneIndicator(boneName){
+  const bone = boneMap[boneName];
+  if(!bone || !boneIndicator) return;
+  const worldPos = new THREE.Vector3();
+  bone.getWorldPosition(worldPos);
+  boneIndicator.position.copy(worldPos);
+  boneIndicator.visible = true;
+  if(boneIndicatorRing){
+    boneIndicatorRing.position.copy(worldPos);
+    boneIndicatorRing.lookAt(camera.position);
+    boneIndicatorRing.visible = true;
+  }
+}
+
+function hideBoneIndicator(){
+  if(boneIndicator) boneIndicator.visible = false;
+  if(boneIndicatorRing) boneIndicatorRing.visible = false;
+}
+
+function createSkeletonHelper(){
+  if(skeletonHelper) scene.remove(skeletonHelper);
+  skeletonHelper = new THREE.SkeletonHelper(model);
+  skeletonHelper.material.linewidth = 1;
+  skeletonHelper.material.color.setHex(0x0A84FF);
+  skeletonHelper.material.transparent = true;
+  skeletonHelper.material.opacity = 0.25;
+  skeletonHelper.material.depthTest = false;
+  skeletonHelper.renderOrder = 900;
+  scene.add(skeletonHelper);
+}
+
+function applyTPose() {
+  if (!model) return;
+  for (const name in boneMap) {
+    boneMap[name].rotation.set(0, 0, 0);
+    currentPoseRotations[name] = {x:0, y:0, z:0};
+  }
+  for (const name in tPoseData) {
+    if (boneMap[name]) {
+      boneMap[name].rotation.set(tPoseData[name].x, tPoseData[name].y, tPoseData[name].z);
+      currentPoseRotations[name] = {x:tPoseData[name].x, y:tPoseData[name].y, z:tPoseData[name].z};
+    }
+  }
+  if(selectedBone) refreshBoneEditor(selectedBone);
+  model.updateMatrixWorld(true);
+}
+
+
+
+/* ═══════════════════════════════════════════════
+   MEDIAPIPE INITIALIZATION
+   ═══════════════════════════════════════════════ */
+
+async function initMediaPipe() {
+  showLoading('Loading MediaPipe Pose…');
+  try {
+    const vision = await FilesetResolver.forVisionTasks(
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+    );
+
+    poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
+        delegate: "GPU"
+      },
+      runningMode: "IMAGE",
+      numPoses: 1
+    });
+
+    showToast('🤖', 'MediaPipe Pose ready');
+  } catch (err) {
+    console.error('MediaPipe init error:', err);
+    showToast('⚠️', 'MediaPipe failed to load — try refreshing');
+  }
+  hideLoading();
+}
+
+
+/* ═══════════════════════════════════════════════
+   COORDINATE CONVERSION  (MediaPipe → Three.js)
+
+   MediaPipe:  X=left, Y=DOWN, Z=away
+   Three.js:   X=right, Y=UP, Z=toward
+   ═══════════════════════════════════════════════ */
+
+function mp(landmark) {
+  return new THREE.Vector3(landmark.x, -landmark.y, -landmark.z);
+}
+
+function mpMid(wl, a, b) {
+  return mp(wl[a]).add(mp(wl[b])).multiplyScalar(0.5);
+}
+
+/* ═══════════════════════════════════════════════
+   PREFERRED CHILD MAP
+   ═══════════════════════════════════════════════ */
+
+const PREFERRED_CHILD = {
+  'mixamorig_Hips':          'mixamorig_Spine',
+  'mixamorig_Spine':         'mixamorig_Spine1',
+  'mixamorig_Spine1':        'mixamorig_Spine2',
+  'mixamorig_Spine2':        'mixamorig_Neck',
+  'mixamorig_Neck':          'mixamorig_Head',
+  'mixamorig_Head':          'mixamorig_HeadTop_End',
+  'mixamorig_LeftShoulder':  'mixamorig_LeftArm',
+  'mixamorig_LeftArm':       'mixamorig_LeftForeArm',
+  'mixamorig_LeftForeArm':   'mixamorig_LeftHand',
+  'mixamorig_RightShoulder': 'mixamorig_RightArm',
+  'mixamorig_RightArm':      'mixamorig_RightForeArm',
+  'mixamorig_RightForeArm':  'mixamorig_RightHand',
+  'mixamorig_LeftUpLeg':     'mixamorig_LeftLeg',
+  'mixamorig_LeftLeg':       'mixamorig_LeftFoot',
+  'mixamorig_LeftFoot':      'mixamorig_LeftToeBase',
+  'mixamorig_RightUpLeg':    'mixamorig_RightLeg',
+  'mixamorig_RightLeg':      'mixamorig_RightFoot',
+  'mixamorig_RightFoot':     'mixamorig_RightToeBase',
+};
+
+
+function getBoneWorldDirection(bone) {
+  let child = null;
+  const preferred = PREFERRED_CHILD[bone.name];
+
+  if (preferred && boneMap[preferred]) {
+    child = boneMap[preferred];
+  } else {
+    if (bone.name === 'mixamorig_Spine' && boneMap['mixamorig_Spine2']) {
+      child = boneMap['mixamorig_Spine2'];
+    } else {
+      for (const c of bone.children) {
+        if (c.isBone) { child = c; break; }
+      }
+    }
+  }
+
+  if (!child) return null;
+
+  const bonePos = new THREE.Vector3();
+  const childPos = new THREE.Vector3();
+  bone.getWorldPosition(bonePos);
+  child.getWorldPosition(childPos);
+
+  const dir = childPos.sub(bonePos);
+  if (dir.lengthSq() < 0.000001) return null;
+  return dir.normalize();
+}
+
+
+/* ═══════════════════════════════════════════════
+   JOINT LIMITS
+   ═══════════════════════════════════════════════ */
+
+const JOINT_LIMITS = {
+  'mixamorig_Hips':   { x: [-0.6, 0.6], y: [-0.8, 0.8], z: [-0.5, 0.5] },
+  'mixamorig_Spine':  { x: [-0.5, 0.3], y: [-0.3, 0.3], z: [-0.3, 0.3] },
+  'mixamorig_Spine1': { x: [-0.3, 0.2], y: [-0.2, 0.2], z: [-0.2, 0.2] },
+  'mixamorig_Spine2': { x: [-0.3, 0.2], y: [-0.2, 0.2], z: [-0.2, 0.2] },
+  'mixamorig_Neck':   { x: [-0.6, 0.6], y: [-0.8, 0.8], z: [-0.4, 0.4] },
+  'mixamorig_Head':   { x: [-0.5, 0.5], y: [-0.7, 0.7], z: [-0.3, 0.3] },
+
+  'mixamorig_LeftArm':  { x: [-1.8, 1.8], y: [-1.5, 1.5], z: [-1.0, 2.8] },
+  'mixamorig_RightArm': { x: [-1.8, 1.8], y: [-1.5, 1.5], z: [-2.8, 1.0] },
+
+  'mixamorig_LeftForeArm':  { x: [-0.3, 0.3], y: [-2.6, 0.1], z: [-0.3, 0.3] },
+  'mixamorig_RightForeArm': { x: [-0.3, 0.3], y: [-0.1, 2.6], z: [-0.3, 0.3] },
+
+  'mixamorig_LeftUpLeg':  { x: [-2.2, 0.5], y: [-0.8, 0.8], z: [2.0, 4.3] },
+  'mixamorig_RightUpLeg': { x: [-2.2, 0.5], y: [-0.8, 0.8], z: [2.0, 4.3] },
+
+  'mixamorig_LeftLeg':  { x: [-2.6, 0.0], y: [-0.1, 0.1], z: [-0.1, 0.1] },
+  'mixamorig_RightLeg': { x: [-2.6, 0.0], y: [-0.1, 0.1], z: [-0.1, 0.1] },
+
+  'mixamorig_LeftFoot':  { x: [-0.2, 1.5], y: [-0.5, 0.5], z: [-0.3, 0.3] },
+  'mixamorig_RightFoot': { x: [-0.2, 1.5], y: [-0.5, 0.5], z: [-0.3, 0.3] },
+};
+
+
+/* ═══════════════════════════════════════════════
+   POLE VECTOR CONSTRAINTS
+   ═══════════════════════════════════════════════ */
+
+function computePoleConstrainedRotation(boneName, currentDir, targetDir, wl) {
+  const baseQ = new THREE.Quaternion().setFromUnitVectors(currentDir, targetDir);
+
+  if (boneName === 'mixamorig_LeftForeArm' || boneName === 'mixamorig_RightForeArm') {
+    const isLeft = boneName.includes('Left');
+    const shoulder = mp(wl['left_shoulder'] || wl[11]);
+    const elbow    = mp(wl['left_elbow'] || wl[13]);
+    const wrist    = mp(wl['left_wrist'] || wl[15]);
+
+    if (!isLeft) {
+      shoulder.copy(mp(wl['right_shoulder'] || wl[12]));
+      elbow.copy(mp(wl['right_elbow'] || wl[14]));
+      wrist.copy(mp(wl['right_wrist'] || wl[16]));
+    }
+
+    const upperArm = elbow.clone().sub(shoulder);
+    const foreArm  = wrist.clone().sub(elbow);
+    const armPlaneNormal = new THREE.Vector3().crossVectors(upperArm, foreArm);
+
+    if (armPlaneNormal.lengthSq() > 0.0001) {
+      armPlaneNormal.normalize();
+      const currentNormal = new THREE.Vector3(0, 0, isLeft ? -1 : 1).applyQuaternion(baseQ);
+      const twistAngle = Math.atan2(
+        currentNormal.dot(armPlaneNormal),
+        currentNormal.clone().cross(armPlaneNormal).dot(targetDir)
+      );
+      if (Math.abs(twistAngle) > 0.1) {
+        const twistQ = new THREE.Quaternion().setFromAxisAngle(targetDir, -twistAngle * 0.3);
+        baseQ.premultiply(twistQ);
+      }
+    }
+  }
+
+  if (boneName === 'mixamorig_LeftLeg' || boneName === 'mixamorig_RightLeg') {
+    const isLeft = boneName.includes('Left');
+    const hip   = mp(wl[isLeft ? 'left_hip' : 'right_hip'] || wl[isLeft ? 23 : 24]);
+    const knee  = mp(wl[isLeft ? 'left_knee' : 'right_knee'] || wl[isLeft ? 25 : 26]);
+    const ankle = mp(wl[isLeft ? 'left_ankle' : 'right_ankle'] || wl[isLeft ? 27 : 28]);
+
+    const thigh = knee.clone().sub(hip);
+    const shin  = ankle.clone().sub(knee);
+    const legPlaneNormal = new THREE.Vector3().crossVectors(thigh, shin);
+
+    if (legPlaneNormal.lengthSq() > 0.0001) {
+      legPlaneNormal.normalize();
+      const forward = new THREE.Vector3(0, 0, 1);
+      const poleAlignment = legPlaneNormal.dot(forward);
+      if (poleAlignment < 0) {
+        const flipQ = new THREE.Quaternion().setFromAxisAngle(targetDir, Math.PI);
+        baseQ.premultiply(flipQ);
+      }
+    }
+  }
+
+  return baseQ;
+}
+
+
+function clampEuler(euler, boneName) {
+  const limits = JOINT_LIMITS[boneName];
+  if (!limits) return euler;
+  return new THREE.Euler(
+    Math.max(limits.x[0], Math.min(limits.x[1], euler.x)),
+    Math.max(limits.y[0], Math.min(limits.y[1], euler.y)),
+    Math.max(limits.z[0], Math.min(limits.z[1], euler.z)),
+    euler.order
+  );
+}
+
+
+/* ═══════════════════════════════════════════════
+   CORE CONVERSION: MediaPipe → Mixamo rotations
+   ═══════════════════════════════════════════════ */
+
+// MediaPipe landmark name → index mapping
+const LANDMARK_NAMES = [
+  'nose', 'left_eye_inner', 'left_eye', 'left_eye_outer',
+  'right_eye_inner', 'right_eye', 'right_eye_outer',
+  'left_ear', 'right_ear', 'mouth_left', 'mouth_right',
+  'left_shoulder', 'right_shoulder', 'left_elbow', 'right_elbow',
+  'left_wrist', 'right_wrist', 'left_pinky', 'right_pinky',
+  'left_index', 'right_index', 'left_thumb', 'right_thumb',
+  'left_hip', 'right_hip', 'left_knee', 'right_knee',
+  'left_ankle', 'right_ankle', 'left_heel', 'right_heel',
+  'left_foot_index', 'right_foot_index'
+];
+
+function indexedToNamed(landmarks) {
+  const named = {};
+  landmarks.forEach((lm, i) => {
+    if (i < LANDMARK_NAMES.length) {
+      named[LANDMARK_NAMES[i]] = lm;
+    }
+  });
+  return named;
+}
+
+
+function convertPoseFromMediaPipe(worldLandmarks) {
+  const wl = worldLandmarks;
+
+  // Validate
+  const required = [
+    'left_hip', 'right_hip', 'left_shoulder', 'right_shoulder',
+    'left_elbow', 'right_elbow', 'left_wrist', 'right_wrist',
+    'left_knee', 'right_knee', 'left_ankle', 'right_ankle',
+    'nose', 'left_foot_index', 'right_foot_index'
+  ];
+  for (const name of required) {
+    if (!wl[name]) throw new Error('Missing landmark: ' + name);
+  }
+
+  applyTPose();
+
+  const hipCenter      = mpMid(wl, 'left_hip', 'right_hip');
+  const shoulderCenter = mpMid(wl, 'left_shoulder', 'right_shoulder');
+  const spineDir       = shoulderCenter.clone().sub(hipCenter).normalize();
+
+  const lShoulderPos = mp(wl.left_shoulder);
+  const lElbowPos    = mp(wl.left_elbow);
+  const lWristPos    = mp(wl.left_wrist);
+
+  const rShoulderPos = mp(wl.right_shoulder);
+  const rElbowPos    = mp(wl.right_elbow);
+  const rWristPos    = mp(wl.right_wrist);
+
+  const lHipPos   = mp(wl.left_hip);
+  const lKneePos  = mp(wl.left_knee);
+  const lAnklePos = mp(wl.left_ankle);
+  const lFootPos  = mp(wl.left_foot_index);
+
+  const rHipPos   = mp(wl.right_hip);
+  const rKneePos  = mp(wl.right_knee);
+  const rAnklePos = mp(wl.right_ankle);
+  const rFootPos  = mp(wl.right_foot_index);
+
+  const nosePos = mp(wl.nose);
+
+  const targetDirs = {
+    'mixamorig_Hips':   spineDir.clone(),
+    'mixamorig_Spine':  spineDir.clone(),
+    'mixamorig_Spine1': spineDir.clone(),
+    'mixamorig_Spine2': spineDir.clone(),
+    'mixamorig_Neck': nosePos.clone().sub(shoulderCenter).normalize(),
+    'mixamorig_Head': nosePos.clone().sub(shoulderCenter).normalize(),
+    'mixamorig_LeftArm':     lElbowPos.clone().sub(lShoulderPos).normalize(),
+    'mixamorig_LeftForeArm': lWristPos.clone().sub(lElbowPos).normalize(),
+    'mixamorig_RightArm':     rElbowPos.clone().sub(rShoulderPos).normalize(),
+    'mixamorig_RightForeArm': rWristPos.clone().sub(rElbowPos).normalize(),
+    'mixamorig_LeftUpLeg': lKneePos.clone().sub(lHipPos).normalize(),
+    'mixamorig_LeftLeg':   lAnklePos.clone().sub(lKneePos).normalize(),
+    'mixamorig_LeftFoot':  lFootPos.clone().sub(lAnklePos).normalize(),
+    'mixamorig_RightUpLeg': rKneePos.clone().sub(rHipPos).normalize(),
+    'mixamorig_RightLeg':   rAnklePos.clone().sub(rKneePos).normalize(),
+    'mixamorig_RightFoot':  rFootPos.clone().sub(rAnklePos).normalize(),
+  };
+
+  const result = {};
+
+  const processOrder = [
+    'mixamorig_Hips', 'mixamorig_Spine', 'mixamorig_Spine1', 'mixamorig_Spine2',
+    'mixamorig_Neck', 'mixamorig_Head',
+    'mixamorig_LeftShoulder', 'mixamorig_RightShoulder',
+    'mixamorig_LeftArm', 'mixamorig_LeftForeArm',
+    'mixamorig_RightArm', 'mixamorig_RightForeArm',
+    'mixamorig_LeftUpLeg', 'mixamorig_LeftLeg', 'mixamorig_LeftFoot',
+    'mixamorig_RightUpLeg', 'mixamorig_RightLeg', 'mixamorig_RightFoot',
+  ];
+
+  for (const boneName of processOrder) {
+    const bone = boneMap[boneName];
+    if (!bone) continue;
+
+    if (boneName === 'mixamorig_LeftShoulder' || boneName === 'mixamorig_RightShoulder') {
+      const tRot = tPoseData[boneName];
+      if (tRot) result[boneName] = { x: tRot.x, y: tRot.y, z: tRot.z };
+      continue;
+    }
+
+    const targetDir = targetDirs[boneName];
+    if (!targetDir) continue;
+
+    const currentDir = getBoneWorldDirection(bone);
+    if (!currentDir) continue;
+
+    const dot = currentDir.dot(targetDir);
+    if (dot > 0.9999) {
+      result[boneName] = {
+        x: Math.round(bone.rotation.x * 10000) / 10000,
+        y: Math.round(bone.rotation.y * 10000) / 10000,
+        z: Math.round(bone.rotation.z * 10000) / 10000,
+      };
+      continue;
+    }
+
+    let deltaQ;
+    if (dot < -0.9999) {
+      const perp = Math.abs(currentDir.x) < 0.9
+        ? new THREE.Vector3(1, 0, 0)
+        : new THREE.Vector3(0, 1, 0);
+      const axis = new THREE.Vector3().crossVectors(currentDir, perp).normalize();
+      deltaQ = new THREE.Quaternion().setFromAxisAngle(axis, Math.PI);
+    } else {
+      deltaQ = computePoleConstrainedRotation(boneName, currentDir, targetDir, wl);
+    }
+
+    const parentWorldQ = new THREE.Quaternion();
+    if (bone.parent) bone.parent.getWorldQuaternion(parentWorldQ);
+
+    const localDelta = parentWorldQ.clone().invert()
+      .multiply(deltaQ)
+      .multiply(parentWorldQ);
+
+    const currentLocalQ = bone.quaternion.clone();
+    const newLocalQ = localDelta.multiply(currentLocalQ);
+
+    const euler = new THREE.Euler();
+    euler.setFromQuaternion(newLocalQ, bone.rotation.order || 'XYZ');
+
+    const clamped = clampEuler(euler, boneName);
+
+    if (boneName.includes('UpLeg')) {
+      clamped.z = Math.PI;
+    }
+
+    bone.rotation.set(clamped.x, clamped.y, clamped.z);
+    model.updateMatrixWorld(true);
+
+    const rotObj = {
+      x: Math.round(clamped.x * 10000) / 10000,
+      y: Math.round(clamped.y * 10000) / 10000,
+      z: Math.round(clamped.z * 10000) / 10000,
+    };
+    result[boneName] = rotObj;
+    currentPoseRotations[boneName] = rotObj;
+  }
+
+  // Hips translation
+  const hips = boneMap['mixamorig_Hips'];
+  if (hips) {
+    const ankleY = (mp(wl.left_ankle).y + mp(wl.right_ankle).y) * 0.5;
+    const hipY = hipCenter.y - ankleY;
+    const scale = 1.0;
+    hips.position.x = hipCenter.x * scale;
+    hips.position.y = hipY * scale;
+    hips.position.z = hipCenter.z * scale;
+
+    result['mixamorig_Hips'].position = {
+      x: Math.round(hips.position.x * 1000) / 1000,
+      y: Math.round(hips.position.y * 1000) / 1000,
+      z: Math.round(hips.position.z * 1000) / 1000
+    };
+  }
+
+  // Copy hand/finger bones from T-pose
+  for (const name in tPoseData) {
+    if (!result[name] && boneMap[name]) {
+      if (name.includes('Hand') || name.includes('Thumb') ||
+          name.includes('Index') || name.includes('Middle') ||
+          name.includes('Ring') || name.includes('Pinky') ||
+          name.includes('Toe')) {
+        result[name] = { ...tPoseData[name] };
+        currentPoseRotations[name] = { ...tPoseData[name] };
+      }
+    }
+  }
+
+  if (selectedBone) refreshBoneEditor(selectedBone);
+  return result;
+}
+
+/* ── BONE LIST ── */
+function populateBoneList(filter){
+  const list = document.getElementById('boneList');
+  if(!list) return;
+  list.innerHTML='';
+  const names = Object.keys(boneMap).filter(n=>n.toLowerCase().includes(filter.toLowerCase())).sort();
+  names.forEach(name=>{
+    const el=document.createElement('div');
+    el.className='bone-item'+(selectedBone===name?' selected':'');
+    el.textContent=name.replace('mixamorig_','');
+    el.title=name;
+    el.onclick=()=>selectBone(name);
+    list.appendChild(el);
+  });
+}
+
+function selectBone(name){
+  selectedBone=name;
+  populateBoneList(document.getElementById('boneSearch').value);
+  refreshBoneEditor(name);
+  showBoneIndicator(name);
+}
+
+function refreshBoneEditor(name){
+  const bone=boneMap[name]; if(!bone) return;
+  const rot=currentPoseRotations[name]||{x:0,y:0,z:0};
+  document.getElementById('boneEditorTitle').textContent=name.replace('mixamorig_','');
+  document.getElementById('axisControls').style.display='block';
+  setSlider('rx','rxVal',rot.x);
+  setSlider('ry','ryVal',rot.y);
+  setSlider('rz','rzVal',rot.z);
+}
+
+function setSlider(id,valId,v){
+  const el = document.getElementById(id);
+  const valEl = document.getElementById(valId);
+  if(el) el.value=v;
+  if(valEl) valEl.textContent=v.toFixed(2);
+}
+
+function onAxisChange(){
+  if(!selectedBone||!boneMap[selectedBone]) return;
+  const x=parseFloat(document.getElementById('rx').value);
+  const y=parseFloat(document.getElementById('ry').value);
+  const z=parseFloat(document.getElementById('rz').value);
+  document.getElementById('rxVal').textContent=x.toFixed(2);
+  document.getElementById('ryVal').textContent=y.toFixed(2);
+  document.getElementById('rzVal').textContent=z.toFixed(2);
+  boneMap[selectedBone].rotation.set(x,y,z);
+  currentPoseRotations[selectedBone]={x,y,z};
+
+  // Sync to mixamo output if exists
+  if(currentMixamoOutput) {
+    currentMixamoOutput[selectedBone] = {
+      x: Math.round(x * 10000) / 10000,
+      y: Math.round(y * 10000) / 10000,
+      z: Math.round(z * 10000) / 10000
+    };
+  }
+}
+
+
+
+/* ═══════════════════════════════════════════════
+   POSE EXTRACTION PIPELINE
+   ═══════════════════════════════════════════════ */
+
+async function extractAndApply() {
+  if (!poseLandmarker || !uploadedImage || !model) {
+    showToast('⚠️', 'Not ready — model or MediaPipe still loading');
+    return;
+  }
+
+  setStep(2);
+  showLoading('Extracting pose from image…');
+  document.getElementById('panelBadge').textContent = 'Processing…';
+  document.getElementById('panelBadge').className = 'panel-badge info';
+
+  try {
+    // Run MediaPipe detection
+    const img = document.getElementById('previewImg');
+    const result = poseLandmarker.detect(img);
+
+    if (!result.worldLandmarks || result.worldLandmarks.length === 0) {
+      throw new Error('No pose detected in this image');
+    }
+
+    // Draw landmarks on overlay
+    drawLandmarks(result.landmarks[0], img);
+
+    // Convert array to named landmarks
+    const namedWorldLandmarks = indexedToNamed(result.worldLandmarks[0]);
+
+    // Show stats
+    const statsEl = document.getElementById('landmarkStats');
+    statsEl.style.display = 'block';
+    const landmarkCount = result.worldLandmarks[0].length;
+    let statsText = `✅ ${landmarkCount} landmarks detected\n\n`;
+    statsText += `Key points:\n`;
+    for (const key of ['nose', 'left_shoulder', 'right_shoulder', 'left_hip', 'right_hip']) {
+      const lm = namedWorldLandmarks[key];
+      if (lm) {
+        statsText += `  ${key}: (${lm.x.toFixed(3)}, ${lm.y.toFixed(3)}, ${lm.z.toFixed(3)})\n`;
+      }
+    }
+    statsEl.textContent = statsText;
+
+    // Setup export JSON modal content
+    const mixamo = convertPoseFromMediaPipe(namedWorldLandmarks);
+    currentMixamoOutput = mixamo;
+
+    const boneCount = Object.keys(mixamo).length;
+    document.getElementById('panelBadge').textContent = boneCount + ' bones mapped';
+    document.getElementById('panelBadge').className = 'panel-badge success';
+
+    // Enable export buttons
+    document.getElementById('exportJsonBtn').disabled = false;
+    document.getElementById('exportGlbBtn').disabled = false;
+
+    showToast('✨', 'Pose applied — ' + boneCount + ' bones');
+
+  } catch (err) {
+    console.error('Extraction error:', err);
+    showToast('⚠️', err.message || 'Failed to extract pose');
+    document.getElementById('panelBadge').textContent = 'Error';
+    document.getElementById('panelBadge').className = 'panel-badge info';
+    setStep(1);
+  }
+
+  hideLoading();
+}
+
+
+/* ═══════════════════════════════════════════════
+   DRAW LANDMARKS ON CANVAS OVERLAY
+   ═══════════════════════════════════════════════ */
+
+function drawLandmarks(landmarks, imgEl) {
+  const canvas = document.getElementById('overlayCanvas');
+  const ctx = canvas.getContext('2d');
+
+  canvas.width = imgEl.naturalWidth;
+  canvas.height = imgEl.naturalHeight;
+  canvas.style.width = imgEl.clientWidth + 'px';
+  canvas.style.height = imgEl.clientHeight + 'px';
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Connection pairs (MediaPipe Pose)
+  const connections = [
+    [11,12], [11,13], [13,15], [12,14], [14,16],
+    [11,23], [12,24], [23,24], [23,25], [24,26],
+    [25,27], [26,28], [27,29], [28,30], [29,31], [30,32],
+    [0,1], [1,2], [2,3], [3,7], [0,4], [4,5], [5,6], [6,8]
+  ];
+
+  // Draw connections
+  ctx.strokeStyle = 'rgba(10, 132, 255, 0.6)';
+  ctx.lineWidth = 3;
+  for (const [a, b] of connections) {
+    if (landmarks[a] && landmarks[b]) {
+      const ax = landmarks[a].x * canvas.width;
+      const ay = landmarks[a].y * canvas.height;
+      const bx = landmarks[b].x * canvas.width;
+      const by = landmarks[b].y * canvas.height;
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(bx, by);
+      ctx.stroke();
+    }
+  }
+
+  // Draw points
+  for (let i = 0; i < landmarks.length; i++) {
+    const lm = landmarks[i];
+    const x = lm.x * canvas.width;
+    const y = lm.y * canvas.height;
+
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = i >= 11 ? 'rgba(48, 209, 88, 0.9)' : 'rgba(255, 159, 10, 0.9)';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+}
+
+
+/* ═══════════════════════════════════════════════
+   EXPORT FUNCTIONS
+   ═══════════════════════════════════════════════ */
+
+function exportJSON() {
+  const output = currentMixamoOutput || {};
+  // If user edited bones manually, ensure the output reflects that
+  for(const name in currentPoseRotations){
+    const r = currentPoseRotations[name];
+    if(Math.abs(r.x)>0.001||Math.abs(r.y)>0.001||Math.abs(r.z)>0.001){
+        output[name] = {x:+r.x.toFixed(4), y:+r.y.toFixed(4), z:+r.z.toFixed(4)};
+    }
+  }
+
+  document.getElementById('exportText').value = JSON.stringify(output, null, 2);
+  document.getElementById('exportOverlay').classList.add('visible');
+  document.getElementById('exportBox').classList.add('visible');
+}
+
+function exportGLB() {
+  if (!model) return;
+  showToast('⏳', 'Exporting GLB…');
+
+  const exporter = new THREE.GLTFExporter();
+  exporter.parse(model, (result) => {
+    if (result instanceof ArrayBuffer) {
+      const blob = new Blob([result], { type: 'application/octet-stream' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'character-pose.glb';
+      link.click();
+      URL.revokeObjectURL(link.href);
+      showToast('✅', 'GLB exported successfully');
+    }
+  }, { binary: true });
+}
+
+
+/* ═══════════════════════════════════════════════
+   UI HELPERS
+   ═══════════════════════════════════════════════ */
+
+function showLoading(text) {
+  document.getElementById('loadingText').textContent = text;
+  document.getElementById('loadingOverlay').classList.add('visible');
+}
+
+function hideLoading() {
+  document.getElementById('loadingOverlay').classList.remove('visible');
+}
+
+function showToast(icon, msg) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toastIcon').textContent = icon;
+  document.getElementById('toastText').textContent = msg;
+  toast.classList.add('visible');
+  setTimeout(() => toast.classList.remove('visible'), 2500);
+}
+
+
+/* ═══════════════════════════════════════════════
+   WIRE UP UI
+   ═══════════════════════════════════════════════ */
+
+// Image drop/upload
+const imageDrop = document.getElementById('imageDrop');
+const imageInput = document.getElementById('imageInput');
+
+imageDrop.addEventListener('dragover', e => {
+  e.preventDefault();
+  imageDrop.classList.add('dragover');
+});
+
+imageDrop.addEventListener('dragleave', () => {
+  imageDrop.classList.remove('dragover');
+});
+
+imageDrop.addEventListener('drop', e => {
+  e.preventDefault();
+  imageDrop.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) handleImageFile(file);
+});
+
+imageInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) handleImageFile(file);
+});
+
+function handleImageFile(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = document.getElementById('previewImg');
+    img.src = ev.target.result;
+    img.onload = () => {
+      uploadedImage = file;
+
+      // Update UI
+      document.getElementById('dropPlaceholder').style.display = 'none';
+      document.getElementById('imagePreview').classList.add('visible');
+      imageDrop.classList.add('has-image');
+
+      document.getElementById('extractBtn').disabled = false;
+      document.getElementById('resetBtn').disabled = false;
+      document.getElementById('panelBadge').textContent = file.name;
+      document.getElementById('panelBadge').className = 'panel-badge info';
+
+      // Clear old overlay
+      const ctx = document.getElementById('overlayCanvas').getContext('2d');
+      ctx.clearRect(0, 0, 9999, 9999);
+      document.getElementById('landmarkStats').style.display = 'none';
+
+      setStep(1);
+      showToast('🖼️', 'Image loaded — click Extract & Apply');
+    };
+  };
+  reader.readAsDataURL(file);
+}
+
+// Extract button
+document.getElementById('extractBtn').addEventListener('click', extractAndApply);
+
+// Reset
+document.getElementById('resetBtn').addEventListener('click', () => {
+  uploadedImage = null;
+  currentMixamoOutput = null;
+  selectedBone = null;
+  hideBoneIndicator();
+
+  document.getElementById('dropPlaceholder').style.display = '';
+  document.getElementById('imagePreview').classList.remove('visible');
+  imageDrop.classList.remove('has-image');
+  document.getElementById('landmarkStats').style.display = 'none';
+
+  document.getElementById('extractBtn').disabled = true;
+  document.getElementById('resetBtn').disabled = true;
+  document.getElementById('exportJsonBtn').disabled = true;
+  document.getElementById('exportGlbBtn').disabled = true;
+  document.getElementById('panelBadge').textContent = 'Waiting';
+  document.getElementById('panelBadge').className = 'panel-badge info';
+  document.getElementById('axisControls').style.display = 'none';
+  document.getElementById('boneEditorTitle').textContent = 'Select a bone';
+
+  // Show file input again
+  imageInput.value = '';
+
+  // Reset model to T-pose
+  applyTPose();
+  populateBoneList('');
+
+  setStep(1);
+  showToast('↻', 'Reset — ready for a new image');
+});
+
+// Image panel toggle
+document.getElementById('toggleImageBtn').addEventListener('click', (e)=>{
+  const panel = document.getElementById('imagePanel');
+  panel.classList.toggle('hidden');
+  e.currentTarget.classList.toggle('active', !panel.classList.contains('hidden'));
+  onResize();
+});
+
+// Bone panel toggles
+document.getElementById('toggleBonesBtn').addEventListener('click', (e)=>{
+  const panel = document.getElementById('bonePanel');
+  panel.classList.toggle('hidden');
+  e.currentTarget.classList.toggle('active', !panel.classList.contains('hidden'));
+  onResize();
+});
+
+document.getElementById('togglePointsBtn').addEventListener('click', (e)=>{
+  showAllPoints = !showAllPoints;
+  e.currentTarget.classList.toggle('active', showAllPoints);
+  if(pointsGroup) pointsGroup.visible = showAllPoints;
+});
+
+// Axis sliders
+['rx','ry','rz'].forEach(id=>document.getElementById(id).addEventListener('input',onAxisChange));
+
+// Bone search
+document.getElementById('boneSearch').addEventListener('input',e=>populateBoneList(e.target.value));
+
+// Reset bone
+document.getElementById('resetBoneBtn').addEventListener('click',()=>{
+  if(!selectedBone||!boneMap[selectedBone]) return;
+  boneMap[selectedBone].rotation.set(0,0,0);
+  currentPoseRotations[selectedBone]={x:0,y:0,z:0};
+  setSlider('rx','rxVal',0);
+  setSlider('ry','ryVal',0);
+  setSlider('rz','rzVal',0);
+  if(currentMixamoOutput) delete currentMixamoOutput[selectedBone];
+});
+
+// Export buttons
+document.getElementById('exportJsonBtn').addEventListener('click', exportJSON);
+document.getElementById('exportGlbBtn').addEventListener('click', exportGLB);
+
+// Export modal
+document.getElementById('modalCloseBtn').addEventListener('click', () => {
+  document.getElementById('exportOverlay').classList.remove('visible');
+  document.getElementById('exportBox').classList.remove('visible');
+});
+
+document.getElementById('exportOverlay').addEventListener('click', () => {
+  document.getElementById('exportOverlay').classList.remove('visible');
+  document.getElementById('exportBox').classList.remove('visible');
+});
+
+document.getElementById('modalCopyBtn').addEventListener('click', () => {
+  const text = document.getElementById('exportText').value;
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('📋', 'Copied to clipboard');
+  });
+});
+
+// ESC
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.getElementById('exportOverlay').classList.remove('visible');
+    document.getElementById('exportBox').classList.remove('visible');
+  }
+});
+
+
+/* ═══════════════════════════════════════════════
+   BOOT
+   ═══════════════════════════════════════════════ */
+
+async function boot() {
+  initThree();
+  await loadModelAndTPose();
+  await initMediaPipe();
+}
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', boot);
+} else {
+  boot();
+}
+
+})();
+</script>
+</body>
+</html>
