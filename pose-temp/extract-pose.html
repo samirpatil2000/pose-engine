@@ -152,6 +152,13 @@
     box-shadow: 0 0 20px var(--accent-glow);
   }
 
+  .topbar-btn.active {
+    background: var(--accent-glow);
+    color: var(--accent);
+    border-color: rgba(10,132,255,0.4);
+    box-shadow: 0 0 15px var(--accent-glow);
+  }
+
   .topbar-btn svg {
     width: 15px; height: 15px;
     stroke: currentColor;
@@ -1062,6 +1069,7 @@ function setupOrbit(canvas){
       if(boneName) {
         selectBone(boneName);
         document.getElementById('bonePanel').classList.remove('hidden');
+        document.getElementById('toggleBonesBtn').classList.add('active');
         setTimeout(onResize, 50);
       }
     }
@@ -1427,15 +1435,17 @@ document.getElementById('applyPasteBtn').addEventListener('click', ()=>{
 });
 
 // Toggle bone panel
-document.getElementById('toggleBonesBtn').addEventListener('click', ()=>{
+document.getElementById('toggleBonesBtn').addEventListener('click', (e)=>{
   const panel = document.getElementById('bonePanel');
   panel.classList.toggle('hidden');
+  e.currentTarget.classList.toggle('active', !panel.classList.contains('hidden'));
   setTimeout(onResize, 300);
 });
 
 // Toggle points
-document.getElementById('togglePointsBtn').addEventListener('click', ()=>{
+document.getElementById('togglePointsBtn').addEventListener('click', (e)=>{
   showAllPoints = !showAllPoints;
+  e.currentTarget.classList.toggle('active', showAllPoints);
   if(pointsGroup){
     pointsGroup.visible = showAllPoints;
   }
