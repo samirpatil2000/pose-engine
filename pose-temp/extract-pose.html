@@ -803,9 +803,14 @@
     Points
   </button>
 
-  <button class="topbar-btn primary" id="exportBtn" disabled>
+  <button class="topbar-btn" id="exportBtn" disabled>
     <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-    Export
+    Export JSON
+  </button>
+
+  <button class="topbar-btn primary" id="exportGlbBtn" disabled>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Export GLB
   </button>
 </div>
 
@@ -914,6 +919,7 @@
 <!-- Three.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
 <script>
 (function(){
 
@@ -1231,6 +1237,7 @@ function loadGLBFromBuffer(buffer){
       createSkeletonHelper();
 
       document.getElementById('exportBtn').disabled = false;
+      document.getElementById('exportGlbBtn').disabled = false;
       populateBoneList('');
       resolve(Object.keys(boneMap).length);
     }, err => reject(err));
@@ -1318,6 +1325,54 @@ function exportPose(){
   document.getElementById('exportText').value=JSON.stringify(out,null,2);
   document.getElementById('exportOverlay').classList.add('visible');
   document.getElementById('exportBox').classList.add('visible');
+}
+
+function exportGLB(){
+  if(!model) return;
+  setStatus('Exporting GLB…');
+  
+  const exporter = new THREE.GLTFExporter();
+  const options = {
+    binary: true,
+    animations: [], // Add if needed
+    truncateDrawRange: true
+  };
+
+  exporter.parse(model, (result) => {
+    if (result instanceof ArrayBuffer) {
+      saveArrayBuffer(result, 'character-pose.glb');
+      showToast('✨', 'GLB exported successfully');
+      setStatus('Export complete', true);
+    } else {
+      // Support for JSON fallback if needed, but we requested binary
+      const output = JSON.stringify(result, null, 2);
+      saveString(output, 'character-pose.gltf');
+    }
+  }, options);
+}
+
+function saveArrayBuffer(buffer, filename) {
+  const blob = new Blob([buffer], { type: 'application/octet-stream' });
+  const link = document.createElement('a');
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(link.href);
+}
+
+function saveString(text, filename) {
+  const blob = new Blob([text], { type: 'text/plain' });
+  const link = document.createElement('a');
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(link.href);
 }
 
 /* ── STATUS ── */
@@ -1453,6 +1508,7 @@ document.getElementById('togglePointsBtn').addEventListener('click', (e)=>{
 
 // Export
 document.getElementById('exportBtn').addEventListener('click', exportPose);
+document.getElementById('exportGlbBtn').addEventListener('click', exportGLB);
 
 document.getElementById('exportClose').addEventListener('click', ()=>{
   document.getElementById('exportOverlay').classList.remove('visible');
