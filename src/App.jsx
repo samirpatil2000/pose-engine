@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import './App.css';
 import PoseEditor from './pages/PoseEditor';
 import PoseExtractor from './pages/PoseExtractor';
@@ -24,14 +24,25 @@ function TabBar() {
   );
 }
 
-function App() {
+function AppRoutes() {
+  const location = useLocation();
+  const showTabBar = location.pathname !== '/';
+
   return (
-    <BrowserRouter>
-      <TabBar />
+    <>
+      {showTabBar && <TabBar />}
       <Routes>
         <Route path="/" element={<PoseEditor />} />
         <Route path="/extract" element={<PoseExtractor />} />
       </Routes>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AppRoutes />
     </BrowserRouter>
   );
 }
