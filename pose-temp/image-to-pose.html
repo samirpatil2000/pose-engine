@@ -553,12 +553,12 @@
     opacity: 1;
   }
 
-  /* ─── BONE PANEL ─── */
   #bonePanel {
     width: 260px;
     flex-shrink: 0;
     background: rgba(18,18,20,0.95);
     backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border-left: 1px solid var(--border);
     display: flex;
     flex-direction: column;
@@ -577,19 +577,46 @@
     pointer-events: none;
   }
 
-  #bonePanelHeader {
-    padding: 14px 16px 10px;
-    border-bottom: 1px solid var(--border);
+  .segment-control {
+    display: flex;
+    background: rgba(0,0,0,0.4);
+    border-radius: 8px;
+    padding: 3px;
+    margin: 14px 16px 10px;
+  }
+
+  .segment-btn {
+    flex: 1;
+    text-align: center;
+    padding: 6px 0;
     font-size: 11px;
     font-weight: 600;
     color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .segment-btn.active {
+    background: rgba(255,255,255,0.1);
+    color: var(--text-primary);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+
+  .panel-view {
+    display: none;
+    flex: 1;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel-view.active {
+    display: flex;
   }
 
   #boneSearch {
-    width: 100%;
-    margin-top: 8px;
+    width: calc(100% - 32px);
+    margin: 0 16px 8px;
     padding: 8px 10px;
     font-size: 12px;
     font-family: inherit;
@@ -922,32 +949,60 @@
     </div>
   </div>
 
-  <!-- BONE PANEL -->
+  <!-- INSPECTOR PANEL -->
   <div id="bonePanel" class="hidden">
-    <div id="bonePanelHeader">
-      Bones
-      <input id="boneSearch" type="text" placeholder="Search…"/>
+    <div class="segment-control">
+      <div class="segment-btn active" data-target="view-bones">Bones</div>
+      <div class="segment-btn" data-target="view-model">Model</div>
     </div>
-    <div id="boneList"></div>
-    <div id="boneEditor">
-      <div id="boneEditorTitle">Select a bone</div>
-      <div id="axisControls" style="display:none;">
+
+    <!-- BONES VIEW -->
+    <div id="view-bones" class="panel-view active">
+      <input id="boneSearch" type="text" placeholder="Search bones…"/>
+      <div id="boneList"></div>
+      <div id="boneEditor">
+        <div id="boneEditorTitle">Select a bone</div>
+        <div id="axisControls" style="display:none;">
+          <div class="axis-row">
+            <span class="axis-label x">X</span>
+            <input type="range" id="rx" min="-3.14" max="3.14" step="0.01" value="0"/>
+            <span class="axis-val" id="rxVal">0.00</span>
+          </div>
+          <div class="axis-row">
+            <span class="axis-label y">Y</span>
+            <input type="range" id="ry" min="-3.14" max="3.14" step="0.01" value="0"/>
+            <span class="axis-val" id="ryVal">0.00</span>
+          </div>
+          <div class="axis-row">
+            <span class="axis-label z">Z</span>
+            <input type="range" id="rz" min="-3.14" max="3.14" step="0.01" value="0"/>
+            <span class="axis-val" id="rzVal">0.00</span>
+          </div>
+          <button id="resetBoneBtn">Reset Bone</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODEL VIEW -->
+    <div id="view-model" class="panel-view">
+      <div id="boneEditor" style="border-top: none; padding-top: 4px;">
+        <div id="boneEditorTitle">Global Translation</div>
         <div class="axis-row">
           <span class="axis-label x">X</span>
-          <input type="range" id="rx" min="-3.14" max="3.14" step="0.01" value="0"/>
-          <span class="axis-val" id="rxVal">0.00</span>
+          <input type="range" id="px" min="-5" max="5" step="0.01" value="0"/>
+          <span class="axis-val" id="pxVal">0.00</span>
         </div>
         <div class="axis-row">
           <span class="axis-label y">Y</span>
-          <input type="range" id="ry" min="-3.14" max="3.14" step="0.01" value="0"/>
-          <span class="axis-val" id="ryVal">0.00</span>
+          <input type="range" id="py" min="0" max="5" step="0.01" value="0"/>
+          <span class="axis-val" id="pyVal">0.00</span>
         </div>
         <div class="axis-row">
           <span class="axis-label z">Z</span>
-          <input type="range" id="rz" min="-3.14" max="3.14" step="0.01" value="0"/>
-          <span class="axis-val" id="rzVal">0.00</span>
+          <input type="range" id="pz" min="-5" max="5" step="0.01" value="0"/>
+          <span class="axis-val" id="pzVal">0.00</span>
         </div>
-        <button id="resetBoneBtn">Reset Bone</button>
+        <button id="resetModelBtn" style="width: 100%; margin-top: 8px; padding: 7px; font-size: 12px; font-family: inherit; font-weight: 500; background: rgba(255,69,58,0.08); border: 1px solid rgba(255,69,58,0.15); color: var(--error); border-radius: var(--radius-xs); cursor: pointer; transition: all var(--transition);">Reset Position</button>
       </div>
     </div>
   </div>
@@ -1197,8 +1252,17 @@ async function parseGLB(buffer) {
     const loader = new THREE.GLTFLoader();
     loader.parse(buffer, '', gltf => {
       if (model) scene.remove(model);
+      // We wrap the model in a group so that user translation offsets apply to the group, 
+      // instead of conflicting with the base model centering.
+      if (!window.modelContainer) {
+        window.modelContainer = new THREE.Group();
+        scene.add(window.modelContainer);
+      } else {
+        window.modelContainer.clear();
+      }
+
       model = gltf.scene;
-      scene.add(model);
+      window.modelContainer.add(model);
 
       const box = new THREE.Box3().setFromObject(model);
       const size = box.getSize(new THREE.Vector3());
@@ -1207,6 +1271,9 @@ async function parseGLB(buffer) {
       model.scale.setScalar(sc);
       model.position.sub(ctr.multiplyScalar(sc));
       model.position.y -= box.min.y * sc;
+
+      // Base pose positions
+      window.baseModelPosition = model.position.clone();
 
       target.set(0, size.y * sc * 0.5, 0);
       sph.radius = Math.max(size.x, size.y, size.z) * sc * 1.6;
@@ -1929,11 +1996,11 @@ function exportJSON() {
 }
 
 function exportGLB() {
-  if (!model) return;
+  if (!window.modelContainer) return;
   showToast('⏳', 'Exporting GLB…');
 
   const exporter = new THREE.GLTFExporter();
-  exporter.parse(model, (result) => {
+  exporter.parse(window.modelContainer, (result) => {
     if (result instanceof ArrayBuffer) {
       const blob = new Blob([result], { type: 'application/octet-stream' });
       const link = document.createElement('a');
@@ -2083,6 +2150,43 @@ document.getElementById('togglePointsBtn').addEventListener('click', (e)=>{
   showAllPoints = !showAllPoints;
   e.currentTarget.classList.toggle('active', showAllPoints);
   if(pointsGroup) pointsGroup.visible = showAllPoints;
+});
+
+// Segmented Control
+document.querySelectorAll('.segment-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.segment-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel-view').forEach(v => v.classList.remove('active'));
+    btn.classList.add('active');
+    const targetId = btn.dataset.target;
+    const targetEl = document.getElementById(targetId);
+    if (targetEl) targetEl.classList.add('active');
+  });
+});
+
+// Model Transform Sliders
+['px','py','pz'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', onModelPosChange);
+});
+
+function onModelPosChange() {
+  if (!window.modelContainer) return;
+  const x = parseFloat(document.getElementById('px').value) || 0;
+  const y = parseFloat(document.getElementById('py').value) || 0;
+  const z = parseFloat(document.getElementById('pz').value) || 0;
+  setSlider('px', 'pxVal', x);
+  setSlider('py', 'pyVal', y);
+  setSlider('pz', 'pzVal', z);
+  window.modelContainer.position.set(x, y, z);
+}
+
+document.getElementById('resetModelBtn').addEventListener('click', () => {
+  if (!window.modelContainer) return;
+  setSlider('px', 'pxVal', 0);
+  setSlider('py', 'pyVal', 0);
+  setSlider('pz', 'pzVal', 0);
+  window.modelContainer.position.set(0, 0, 0);
 });
 
 // Axis sliders
