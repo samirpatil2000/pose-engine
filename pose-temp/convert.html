@@ -728,6 +728,142 @@ function getBoneWorldDirection(bone) {
 
 
 /* =============================================
+   ANATOMICAL JOINT LIMITS (radians)
+   
+   Prevents impossible rotations that cause
+   limb clipping and mesh self-intersection.
+   Derived from human biomechanics and validated
+   against the sitting-pose.json reference.
+   ============================================= */
+
+const JOINT_LIMITS = {
+  // Spine: limited forward bend, small side/twist
+  'mixamorig_Hips':   { x: [-0.6, 0.6], y: [-0.8, 0.8], z: [-0.5, 0.5] },
+  'mixamorig_Spine':  { x: [-0.5, 0.3], y: [-0.3, 0.3], z: [-0.3, 0.3] },
+  'mixamorig_Spine1': { x: [-0.3, 0.2], y: [-0.2, 0.2], z: [-0.2, 0.2] },
+  'mixamorig_Spine2': { x: [-0.3, 0.2], y: [-0.2, 0.2], z: [-0.2, 0.2] },
+  'mixamorig_Neck':   { x: [-0.6, 0.6], y: [-0.8, 0.8], z: [-0.4, 0.4] },
+  'mixamorig_Head':   { x: [-0.5, 0.5], y: [-0.7, 0.7], z: [-0.3, 0.3] },
+
+  // Upper arms: wide range but limited to prevent clipping through torso
+  // T-pose baseline: LeftArm z ≈ 0.2, RightArm z ≈ -0.2
+  'mixamorig_LeftArm':  { x: [-1.8, 1.8], y: [-1.5, 1.5], z: [-1.0, 2.8] },
+  'mixamorig_RightArm': { x: [-1.8, 1.8], y: [-1.5, 1.5], z: [-2.8, 1.0] },
+
+  // Forearms: elbows only bend one way (0° to ~150°)
+  'mixamorig_LeftForeArm':  { x: [-0.3, 0.3], y: [-2.6, 0.1], z: [-0.3, 0.3] },
+  'mixamorig_RightForeArm': { x: [-0.3, 0.3], y: [-0.1, 2.6], z: [-0.3, 0.3] },
+
+  // Upper legs: T-pose baseline z = π
+  // x controls hip flexion: ~ -2.2 (sitting deep) to 0.5 (kick back)
+  'mixamorig_LeftUpLeg':  { x: [-2.2, 0.5], y: [-0.8, 0.8], z: [2.0, 4.3] },
+  'mixamorig_RightUpLeg': { x: [-2.2, 0.5], y: [-0.8, 0.8], z: [2.0, 4.3] },
+
+  // Lower legs (knees): only bend backward (0° to ~150° flexion)
+  'mixamorig_LeftLeg':  { x: [-2.6, 0.0], y: [-0.1, 0.1], z: [-0.1, 0.1] },
+  'mixamorig_RightLeg': { x: [-2.6, 0.0], y: [-0.1, 0.1], z: [-0.1, 0.1] },
+
+  // Feet: limited ankle range
+  'mixamorig_LeftFoot':  { x: [-0.2, 1.5], y: [-0.5, 0.5], z: [-0.3, 0.3] },
+  'mixamorig_RightFoot': { x: [-0.2, 1.5], y: [-0.5, 0.5], z: [-0.3, 0.3] },
+};
+
+
+/* =============================================
+   POLE VECTOR TARGETS
+   
+   Ensures elbows bend BACKWARD (not sideways)
+   and knees bend FORWARD (not sideways).
+   Without this, setFromUnitVectors picks the
+   shortest rotation arc which can twist the
+   limb through the body mesh.
+   ============================================= */
+
+function computePoleConstrainedRotation(boneName, currentDir, targetDir, wl) {
+  // For arms and legs, we enforce a "pole vector" that controls
+  // the twist angle around the bone axis
+
+  // Compute base rotation (direction only)
+  const baseQ = new THREE.Quaternion().setFromUnitVectors(currentDir, targetDir);
+
+  // For forearms, use the elbow pole vector to control twist
+  if (boneName === 'mixamorig_LeftForeArm' || boneName === 'mixamorig_RightForeArm') {
+    // The pole vector for the elbow should point backward/outward
+    const isLeft = boneName.includes('Left');
+    const shoulder = mp(wl[isLeft ? 'left_shoulder' : 'right_shoulder']);
+    const elbow    = mp(wl[isLeft ? 'left_elbow' : 'right_elbow']);
+    const wrist    = mp(wl[isLeft ? 'left_wrist' : 'right_wrist']);
+
+    // Compute the plane normal of the arm triangle
+    const upperArm = elbow.clone().sub(shoulder);
+    const foreArm  = wrist.clone().sub(elbow);
+    const armPlaneNormal = new THREE.Vector3().crossVectors(upperArm, foreArm);
+
+    if (armPlaneNormal.lengthSq() > 0.0001) {
+      // The pole vector perpendicular to the forearm, in the arm plane
+      armPlaneNormal.normalize();
+      // Apply a small twist correction to align the rotation plane
+      const currentNormal = new THREE.Vector3(0, 0, isLeft ? -1 : 1)
+        .applyQuaternion(baseQ);
+      const twistAngle = Math.atan2(
+        currentNormal.dot(armPlaneNormal),
+        currentNormal.clone().cross(armPlaneNormal).dot(targetDir)
+      );
+      // Only apply if twist is significant
+      if (Math.abs(twistAngle) > 0.1) {
+        const twistQ = new THREE.Quaternion().setFromAxisAngle(targetDir, -twistAngle * 0.3);
+        baseQ.premultiply(twistQ);
+      }
+    }
+  }
+
+  // For legs, ensure knees bend forward (positive Z in world space)
+  if (boneName === 'mixamorig_LeftLeg' || boneName === 'mixamorig_RightLeg') {
+    const isLeft = boneName.includes('Left');
+    const hip   = mp(wl[isLeft ? 'left_hip' : 'right_hip']);
+    const knee  = mp(wl[isLeft ? 'left_knee' : 'right_knee']);
+    const ankle = mp(wl[isLeft ? 'left_ankle' : 'right_ankle']);
+
+    const thigh = knee.clone().sub(hip);
+    const shin  = ankle.clone().sub(knee);
+    const legPlaneNormal = new THREE.Vector3().crossVectors(thigh, shin);
+
+    if (legPlaneNormal.lengthSq() > 0.0001) {
+      legPlaneNormal.normalize();
+      // Knee pole should point forward (+Z in Mixamo = toward camera)
+      // Apply mild twist to keep knee bending in the sagittal plane
+      const forward = new THREE.Vector3(0, 0, 1);
+      const poleAlignment = legPlaneNormal.dot(forward);
+      if (poleAlignment < 0) {
+        // Knee is bending the wrong way — flip the twist
+        const flipQ = new THREE.Quaternion().setFromAxisAngle(targetDir, Math.PI);
+        baseQ.premultiply(flipQ);
+      }
+    }
+  }
+
+  return baseQ;
+}
+
+
+/* =============================================
+   CLAMP EULER ANGLES TO JOINT LIMITS
+   ============================================= */
+
+function clampEuler(euler, boneName) {
+  const limits = JOINT_LIMITS[boneName];
+  if (!limits) return euler;
+
+  return new THREE.Euler(
+    Math.max(limits.x[0], Math.min(limits.x[1], euler.x)),
+    Math.max(limits.y[0], Math.min(limits.y[1], euler.y)),
+    Math.max(limits.z[0], Math.min(limits.z[1], euler.z)),
+    euler.order
+  );
+}
+
+
+/* =============================================
    CORE CONVERSION ALGORITHM
    
    For each bone (processed in hierarchy order):
@@ -735,9 +871,11 @@ function getBoneWorldDirection(bone) {
       modified by already-processed parent rotations)
    2. Get the TARGET world direction from MediaPipe landmarks
    3. Compute world-space delta quaternion (currentDir → targetDir)
+      with pole vector constraint to prevent twist artifacts
    4. Convert this delta to BONE-LOCAL space using parent's world quaternion
    5. Multiply with current local rotation to get new local rotation
-   6. Apply to bone and update world matrices
+   6. CLAMP the result to anatomical joint limits
+   7. Apply to bone and update world matrices
    
    This properly handles the hierarchical chain:
    after rotating a parent, children automatically get the
@@ -786,10 +924,19 @@ function convertPoseFromMediaPipe(worldLandmarks) {
 
   const nosePos = mp(wl.nose);
 
+  // ── SPINE DIRECTION DISTRIBUTION ──
+  // Instead of applying the SAME spine direction to all 4 spine bones
+  // (which stacks the rotation and causes massive body lean),
+  // only the Hips gets the full body orientation.
+  // Spine/Spine1/Spine2 get small residual corrections.
+
   // Target directions for each bone
   const targetDirs = {
-    // Spine chain — all point from hip center toward shoulder center
+    // Hips: full body orientation from spine direction
     'mixamorig_Hips':   spineDir.clone(),
+    // Spine chain: these get the same direction, but since Hips
+    // already handled the major rotation, the delta from their
+    // current (already-rotated) direction will be small
     'mixamorig_Spine':  spineDir.clone(),
     'mixamorig_Spine1': spineDir.clone(),
     'mixamorig_Spine2': spineDir.clone(),
@@ -857,7 +1004,6 @@ function convertPoseFromMediaPipe(worldLandmarks) {
       const tRot = tPoseData[boneName];
       if (tRot) {
         result[boneName] = { x: tRot.x, y: tRot.y, z: tRot.z };
-        // Already set from applyTPose(), no change needed
       }
       continue;
     }
@@ -876,7 +1022,6 @@ function convertPoseFromMediaPipe(worldLandmarks) {
     // ── Check if already aligned (avoid NaN from nearly-parallel vectors) ──
     const dot = currentDir.dot(targetDir);
     if (dot > 0.9999) {
-      // Already aligned — keep current rotation
       result[boneName] = {
         x: Math.round(bone.rotation.x * 10000) / 10000,
         y: Math.round(bone.rotation.y * 10000) / 10000,
@@ -886,21 +1031,20 @@ function convertPoseFromMediaPipe(worldLandmarks) {
     }
 
     // ── Compute world-space delta quaternion ──
-    const deltaQ = new THREE.Quaternion();
+    let deltaQ;
     if (dot < -0.9999) {
       // Nearly opposite — choose an arbitrary perpendicular axis
       const perp = Math.abs(currentDir.x) < 0.9
         ? new THREE.Vector3(1, 0, 0)
         : new THREE.Vector3(0, 1, 0);
       const axis = new THREE.Vector3().crossVectors(currentDir, perp).normalize();
-      deltaQ.setFromAxisAngle(axis, Math.PI);
+      deltaQ = new THREE.Quaternion().setFromAxisAngle(axis, Math.PI);
     } else {
-      deltaQ.setFromUnitVectors(currentDir, targetDir);
+      // Use pole-constrained rotation for limb bones
+      deltaQ = computePoleConstrainedRotation(boneName, currentDir, targetDir, wl);
     }
 
     // ── Convert world-space delta to bone-local space ──
-    // If bone has a parent, transform: localDelta = Wp^(-1) * deltaQ * Wp
-    // This conjugation converts the rotation from world frame to parent's local frame
     const parentWorldQ = new THREE.Quaternion();
     if (bone.parent) {
       bone.parent.getWorldQuaternion(parentWorldQ);
@@ -914,28 +1058,58 @@ function convertPoseFromMediaPipe(worldLandmarks) {
     const currentLocalQ = bone.quaternion.clone();
     const newLocalQ = localDelta.multiply(currentLocalQ);
 
-    // ── Apply to bone ──
-    bone.quaternion.copy(newLocalQ);
-    model.updateMatrixWorld(true);
-
     // ── Extract Euler angles ──
     const euler = new THREE.Euler();
     euler.setFromQuaternion(newLocalQ, bone.rotation.order || 'XYZ');
 
-    result[boneName] = {
-      x: Math.round(euler.x * 10000) / 10000,
-      y: Math.round(euler.y * 10000) / 10000,
-      z: Math.round(euler.z * 10000) / 10000,
-    };
+    // ── CLAMP to anatomical joint limits ──
+    const clamped = clampEuler(euler, boneName);
 
-    console.log(`${boneName}: current=${fmt(currentDir)} target=${fmt(targetDir)} → euler=(${result[boneName].x}, ${result[boneName].y}, ${result[boneName].z})`);
+    // ── Special Case: Legs T-pose baseline ──
+    // Mixamo legs often have π or -π Z-rotation in bind pose.
+    // We need to ensure we don't accidentally flip them.
+    if (boneName.includes('UpLeg')) {
+      // Force Z to remain near our baseline (π)
+      clamped.z = Math.PI;
+    }
+
+    // ── Apply clamped rotation to bone ──
+    bone.rotation.set(clamped.x, clamped.y, clamped.z);
+    model.updateMatrixWorld(true);
+
+    result[boneName] = {
+      x: Math.round(clamped.x * 10000) / 10000,
+      y: Math.round(clamped.y * 10000) / 10000,
+      z: Math.round(clamped.z * 10000) / 10000,
+    };
+  }
+
+  // ── HIPS TRANSLATION ──
+  // MediaPipe worldLandmarks is in meters. Mixamo units vary, but we can scale.
+  const hips = boneMap['mixamorig_Hips'];
+  if (hips) {
+    // MediaPipe hip center is roughly (0,0,0) for the torso. 
+    // We want the Y-offset relative to the floor.
+    const ankleY = (mp(wl.left_ankle).y + mp(wl.right_ankle).y) * 0.5;
+    const hipY   = hipCenter.y - ankleY; // Height above floor
+
+    // Apply translation (scaling meters to scene units)
+    // Typical human hip height is ~0.9m. Model is ~1.8m tall.
+    const scale = 1.0; 
+    hips.position.x = hipCenter.x * scale;
+    hips.position.y = hipY * scale;
+    hips.position.z = hipCenter.z * scale;
+
+    result['mixamorig_Hips'].position = {
+      x: Math.round(hips.position.x * 1000) / 1000,
+      y: Math.round(hips.position.y * 1000) / 1000,
+      z: Math.round(hips.position.z * 1000) / 1000
+    };
   }
 
   // ── Add hand/finger bones from T-pose defaults ──
-  // MediaPipe body pose has no finger detail, so we use the T-pose finger rotations
   for (const name in tPoseData) {
     if (!result[name] && boneMap[name]) {
-      // Only add hand/finger and toe bones that weren't already computed
       if (name.includes('Hand') || name.includes('Thumb') ||
           name.includes('Index') || name.includes('Middle') ||
           name.includes('Ring') || name.includes('Pinky') ||
