@@ -1,0 +1,265 @@
+/* ── Home Page Container ── */
+.home-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  padding-top: 80px;
+  background: linear-gradient(135deg, rgba(35, 35, 38, 0.8) 0%, rgba(26, 26, 30, 1) 50%, rgba(15, 15, 20, 0.9) 100%);
+}
+
+.home-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 60px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 80px;
+}
+
+/* ── Hero Section ── */
+.hero {
+  text-align: center;
+  animation: fadeInDown 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hero-text h1 {
+  font-size: clamp(32px, 8vw, 64px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #f0f0f2 0%, #a0a0a5 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 16px 0;
+  line-height: 1.1;
+}
+
+.hero-text p {
+  font-size: 18px;
+  font-weight: 400;
+  color: #a0a0a5;
+  margin: 0;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.6;
+}
+
+/* ── Tiles Grid ── */
+.tiles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 24px;
+  animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.1s backwards;
+}
+
+/* ── Tile Card ── */
+.tile-card {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 32px 28px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+  text-align: left;
+  color: inherit;
+  font-family: inherit;
+  position: relative;
+  overflow: hidden;
+}
+
+.tile-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 50% 0%, rgba(77, 163, 255, 0.1), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.tile-card:hover {
+  background: rgba(50, 50, 56, 0.85);
+  border-color: rgba(77, 163, 255, 0.3);
+  transform: translateY(-8px);
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(77, 163, 255, 0.1);
+}
+
+.tile-card:hover::before {
+  opacity: 1;
+}
+
+.tile-card:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.tile-card:active {
+  transform: translateY(-4px);
+}
+
+.tile-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background: rgba(77, 163, 255, 0.1);
+  border-radius: 14px;
+  color: var(--accent-color);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tile-card:hover .tile-icon {
+  background: rgba(77, 163, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.tile-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.tile-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-color);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.tile-description {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.6;
+  transition: color 0.3s ease;
+}
+
+.tile-card:hover .tile-description {
+  color: #a0a0a5;
+}
+
+.tile-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  color: var(--accent-color);
+  opacity: 0.6;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tile-card:hover .tile-arrow {
+  opacity: 1;
+  transform: translateX(4px);
+}
+
+/* ── Home Footer ── */
+.home-footer {
+  text-align: center;
+  padding: 0 24px;
+  animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.2s backwards;
+}
+
+.home-footer p {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+/* ── Animations ── */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Responsive Design ── */
+@media (max-width: 768px) {
+  .home-content {
+    padding: 40px 16px;
+    gap: 60px;
+  }
+
+  .hero-text h1 {
+    font-size: 40px;
+  }
+
+  .hero-text p {
+    font-size: 16px;
+  }
+
+  .tiles-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .tile-card {
+    padding: 24px 20px;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .home-container {
+    padding-top: 70px;
+  }
+
+  .home-content {
+    padding: 32px 12px;
+    gap: 48px;
+  }
+
+  .hero-text h1 {
+    font-size: 28px;
+  }
+
+  .hero-text p {
+    font-size: 14px;
+  }
+
+  .tile-card {
+    padding: 20px 16px;
+    gap: 12px;
+  }
+
+  .tile-title {
+    font-size: 18px;
+  }
+
+  .tile-description {
+    font-size: 13px;
+  }
+}
