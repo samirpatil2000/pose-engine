@@ -159,9 +159,9 @@
 
 .viewport-shell {
   flex: 1;
-  position: absolute;
-  inset: 0;
+  position: relative;
   z-index: 1;
+  min-width: 0;
 }
 
 .three-viewport {
@@ -178,43 +178,40 @@
 /* ── Floating Panels ── */
 .image-panel,
 .bone-panel {
-  position: absolute;
-  top: 24px;
-  bottom: 24px;
+  position: relative;
   width: 340px;
   background: rgba(28, 28, 30, 0.65);
   backdrop-filter: blur(40px);
   -webkit-backdrop-filter: blur(40px);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 24px;
   display: flex;
   flex-direction: column;
   z-index: 10;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255,255,255,0.05) inset;
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1), margin 0.4s ease, opacity 0.4s ease;
   overflow: hidden;
 }
 
 .image-panel {
-  left: 24px;
-  transform: translateX(0);
+  border-radius: 0 24px 24px 0;
+  border-left: none;
 }
 
 .image-panel.hidden {
-  transform: translateX(-120%);
+  width: 0;
   opacity: 0;
-  pointer-events: none;
+  margin-left: -1px;
 }
 
 .bone-panel {
-  right: 24px;
-  transform: translateX(0);
+  border-radius: 24px 0 0 24px;
+  border-right: none;
 }
 
 .bone-panel.hidden {
-  transform: translateX(120%);
+  width: 0;
   opacity: 0;
-  pointer-events: none;
+  margin-right: -1px;
 }
 
 /* ── Panel Header ── */
@@ -450,24 +447,50 @@
   overflow: hidden;
 }
 
+.search-box {
+  margin: 16px 20px 8px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
 #boneSearch {
-  margin: 8px 20px;
-  padding: 10px 14px;
-  border-radius: 10px;
+  width: 100%;
+  padding: 10px 36px 10px 14px;
+  border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.3);
   color: #fff;
   font-size: 13px;
   outline: none;
-  transition: border-color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 #boneSearch:focus {
-  border-color: rgba(10, 132, 255, 0.5);
+  background: rgba(0, 0, 0, 0.5);
+  border-color: #0a84ff;
+  box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.15);
 }
 
-#boneSearch::placeholder {
-  color: rgba(255, 255, 255, 0.3);
+.clear-search {
+  position: absolute;
+  right: 10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clear-search:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
 }
 
 #boneList {
@@ -477,13 +500,22 @@
   margin-bottom: 8px;
 }
 
-/* Custom Scrollbar for sleekness */
-#boneList::-webkit-scrollbar {
-  width: 4px;
+.bone-group {
+  margin-bottom: 16px;
 }
-#boneList::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
+
+.bone-group-header {
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.3);
+  position: sticky;
+  top: 0;
+  background: rgba(28, 28, 30, 0.8);
+  backdrop-filter: blur(10px);
+  z-index: 5;
 }
 
 .bone-item {
@@ -499,6 +531,33 @@
   color: rgba(255, 255, 255, 0.6);
   transition: all 0.15s ease;
   margin-bottom: 2px;
+}
+
+.panel-actions {
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.panel-action-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.panel-action-btn.danger {
+  background: rgba(255, 69, 58, 0.1);
+  border-color: rgba(255, 69, 58, 0.2);
+  color: #ff453a;
+}
+
+.panel-action-btn.danger:hover {
+  background: rgba(255, 69, 58, 0.2);
 }
 
 .bone-item:hover {

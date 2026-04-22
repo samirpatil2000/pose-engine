@@ -207,6 +207,8 @@ export default function PoseEditor() {
     const [showAllPoints, setShowAllPoints] = useState(false);
     const [activePanel, setActivePanel] = useState('view-bones');
     const [imageReady, setImageReady] = useState(false);
+    const [boneCategories, setBoneCategories] = useState({});
+    const [searchQuery, setSearchQuery] = useState('');
     const [imageSrc, setImageSrc] = useState('');
     const [imageStats, setImageStats] = useState('');
     const [isLoading, setIsLoading] = useState(true);
@@ -223,10 +225,14 @@ export default function PoseEditor() {
     const [exportText, setExportText] = useState('');
     const [toast, setToast] = useState({ visible: false, icon: '', text: '' });
 
-    const filteredBoneNames = useMemo(() => {
-        const filter = boneFilter.trim().toLowerCase();
-        return boneNames.filter((name) => name.toLowerCase().includes(filter)).sort();
-    }, [boneFilter, boneNames]);
+    const handleResetAll = () => {
+        if (!sceneStateRef.current.boneMap) return;
+        applyTPose();
+        if (selectedBone) {
+            refreshBoneEditorState(selectedBone);
+        }
+        showToast('🔄', 'Pose reset to T-Pose');
+    };
 
     const showToast = (icon, text) => {
         setToast({ visible: true, icon, text });
@@ -399,14 +405,12 @@ export default function PoseEditor() {
 
     const loadModelAndTPose = async () => {
         setLoading('Loading 3D model…');
-        console.log('DEBUG: Starting model load. Scene state:', sceneStateRef.current);
         try {
             const [glbRes, tPoseRes] = await Promise.all([
                 fetch('/pose-temp/lady-x-bot.glb'),
                 fetch('/pose-temp/extract-t-pose.json'),
             ]);
 
-            console.log('DEBUG: Fetch responses - GLB ok:', glbRes.ok, 'TPose ok:', tPoseRes.ok);
             if (!glbRes.ok || !tPoseRes.ok) {
                 throw new Error('Model assets were not found');
             }
@@ -416,14 +420,10 @@ export default function PoseEditor() {
                 tPoseRes.json(),
             ]);
 
-            console.log('DEBUG: Assets loaded. GLB buffer size:', glbBuffer.byteLength, 'TPose data keys:', Object.keys(tPoseData).length);
-
             const loader = new GLTFLoader();
             await new Promise((resolve, reject) => {
                 loader.parse(glbBuffer, '', (gltf) => {
-                    console.log('DEBUG: GLTFLoader parse success. GLTF scene:', gltf.scene);
                     const { scene, modelContainer } = sceneStateRef.current;
-                    console.log('DEBUG: Scene from ref:', scene ? 'exists' : 'null', 'modelContainer:', modelContainer ? 'exists' : 'null');
                     
                     if (sceneStateRef.current.model) {
                         scene.remove(sceneStateRef.current.model);
@@ -432,7 +432,6 @@ export default function PoseEditor() {
                     if (!modelContainer) {
                         sceneStateRef.current.modelContainer = new THREE.Group();
                         scene.add(sceneStateRef.current.modelContainer);
-                        console.log('DEBUG: Created and added modelContainer to scene');
                     } else {
                         modelContainer.clear();
                     }
@@ -440,24 +439,20 @@ export default function PoseEditor() {
                     const model = gltf.scene;
                     sceneStateRef.current.model = model;
                     sceneStateRef.current.modelContainer.add(model);
-                    console.log('DEBUG: Model added to container. Model:', model, 'Container children:', sceneStateRef.current.modelContainer.children);
 
                     const box = new THREE.Box3().setFromObject(model);
                     const size = box.getSize(new THREE.Vector3());
                     const center = box.getCenter(new THREE.Vector3());
-                    console.log('DEBUG: Model bounding box - size:', size, 'center:', center);
                     const scale = 1.8 / Math.max(size.x, size.y, size.z);
                     model.scale.setScalar(scale);
                     
-                    // Center on X and Z, feet at Y=0
                     model.position.x = -center.x * scale;
                     model.position.z = -center.z * scale;
                     model.position.y = -box.min.y * scale;
                     
-                    console.log('DEBUG: Model scaled and positioned. Scale:', scale, 'Position:', model.position);
-
                     sceneStateRef.current.target.set(0, size.y * scale * 0.5, 0);
-                    sceneStateRef.current.spherical.radius = Math.max(size.x, size.y, size.z) * scale * 1.6;
+                    sceneStateRef.current.spherical.radius = Math.max(size.y * scale, size.x * scale) * 2.0;
+
                     if (sceneStateRef.current.updateCamera) sceneStateRef.current.updateCamera();
 
                     sceneStateRef.current.boneMap = {};
@@ -473,35 +468,38 @@ export default function PoseEditor() {
                         }
                     });
 
-                    console.log('DEBUG: Found bones:', Object.keys(sceneStateRef.current.boneMap).length, 'Bones:', Object.keys(sceneStateRef.current.boneMap).slice(0, 5));
                     sceneStateRef.current.tPoseData = tPoseData;
                     createBoneIndicators();
                     createSkeletonHelper();
-                    setBoneNames(Object.keys(sceneStateRef.current.boneMap));
+                    
+                    const bones = Object.keys(sceneStateRef.current.boneMap);
+                    const categories = {
+                        'Core': bones.filter(b => /Hips|Spine|Neck|Head/i.test(b) && !/Hand|Foot|Toe/i.test(b)),
+                        'Left Arm': bones.filter(b => /Left/i.test(b) && /Arm|Shoulder|ForeArm|Hand/i.test(b)),
+                        'Right Arm': bones.filter(b => /Right/i.test(b) && /Arm|Shoulder|ForeArm|Hand/i.test(b)),
+                        'Left Leg': bones.filter(b => /Left/i.test(b) && /Leg|Foot|Toe/i.test(b)),
+                        'Right Leg': bones.filter(b => /Right/i.test(b) && /Leg|Foot|Toe/i.test(b)),
+                        'Other': bones.filter(b => !/Hips|Spine|Neck|Head|Arm|Shoulder|ForeArm|Hand|Leg|Foot|Toe/i.test(b))
+                    };
+                    setBoneCategories(categories);
+                    setBoneNames(bones);
                     setIsModelReady(true);
-                    console.log('DEBUG: Model loading complete. Scene children count:', sceneStateRef.current.scene.children.length);
-                    showToast('✅', `Model loaded — ${Object.keys(sceneStateRef.current.boneMap).length} bones`);
+                    showToast('✅', `Model loaded`);
                     resolve();
                 }, undefined, reject);
             });
 
             applyTPose();
             setModelPosition({ x: 0, y: 0, z: 0 });
-            if (sceneStateRef.current.modelContainer) {
-                sceneStateRef.current.modelContainer.position.set(0, 0, 0);
-            }
             clearLoading();
         } catch (error) {
-            console.error('Model load error:', error);
             showToast('⚠️', 'Could not load the 3D model');
             clearLoading();
         }
     };
 
     const initScene = () => {
-        console.log('DEBUG initScene: viewportRef.current:', viewportRef.current ? 'exists' : 'NULL', 'initializedRef.current:', initializedRef.current);
         if (!viewportRef.current || initializedRef.current) {
-            console.log('DEBUG initScene: Early return - viewport not ready or already initialized');
             return undefined;
         }
         initializedRef.current = true;
@@ -608,6 +606,18 @@ export default function PoseEditor() {
             state.camera.aspect = nextWidth / nextHeight;
             state.camera.updateProjectionMatrix();
             state.renderer.setSize(nextWidth, nextHeight, false);
+            
+            // Adjust radius to fit model on resize
+            if (state.model) {
+                const box = new THREE.Box3().setFromObject(state.model);
+                const size = box.getSize(new THREE.Vector3());
+                const aspect = nextWidth / nextHeight;
+                const fov = 45 * Math.PI / 180;
+                const hFit = (size.y) / (2 * Math.tan(fov / 2));
+                const wFit = (size.x) / (2 * Math.tan(fov / 2) * aspect);
+                state.spherical.radius = Math.max(hFit, wFit) * 2.0;
+                updateCamera();
+            }
         });
         resizeObserver.observe(viewport);
 
@@ -634,7 +644,6 @@ export default function PoseEditor() {
                 }
             }
 
-            // SkeletonHelper updates automatically; no need to call update()
             state.renderer.render(state.scene, state.camera);
         };
 
@@ -672,7 +681,6 @@ export default function PoseEditor() {
             setIsPoseReady(true);
             showToast('🤖', 'MediaPipe Pose ready');
         } catch (error) {
-            console.error('MediaPipe init error:', error);
             showToast('⚠️', 'MediaPipe failed to load');
         }
         clearLoading();
@@ -946,7 +954,6 @@ export default function PoseEditor() {
             setStep(3);
             showToast('✨', `Pose applied — ${Object.keys(mixamo).length} bones`);
         } catch (error) {
-            console.error('Extraction error:', error);
             setBadge({ text: 'Error', tone: 'info' });
             setStep(1);
             showToast('⚠️', error.message || 'Failed to extract pose');
@@ -993,9 +1000,7 @@ export default function PoseEditor() {
     };
 
     useEffect(() => {
-        console.log('DEBUG: Main useEffect running. viewportRef.current:', viewportRef.current);
         const cleanupScene = initScene();
-        console.log('DEBUG: initScene completed. Cleanup function:', cleanupScene ? 'exists' : 'null');
         initMediaPipe();
         loadModelAndTPose();
 
@@ -1011,9 +1016,7 @@ export default function PoseEditor() {
             if (poseLandmarkerRef.current?.close) {
                 try {
                     poseLandmarkerRef.current.close();
-                } catch (error) {
-                    // Ignore close errors during teardown.
-                }
+                } catch (error) {}
             }
         };
     }, []);
@@ -1032,20 +1035,6 @@ export default function PoseEditor() {
             }
         }
     }, [selectedBone]);
-
-    useEffect(() => {
-        if (!exportModalOpen) return undefined;
-        const onKeyDown = (event) => {
-            if (event.key === 'Escape') {
-                setExportModalOpen(false);
-            }
-        };
-        document.addEventListener('keydown', onKeyDown);
-        return () => document.removeEventListener('keydown', onKeyDown);
-    }, [exportModalOpen]);
-
-    const canExtract = imageReady && isPoseReady && isModelReady && Boolean(imageSrc);
-    const canExport = hasPoseData;
 
     return (
         <div className="pose-editor-studio">
@@ -1068,24 +1057,21 @@ export default function PoseEditor() {
                 <div className="topbar-actions">
                     <div className="panel-toggles">
                         <button className={`topbar-btn ${showImagePanel ? 'active' : ''}`} onClick={() => setShowImagePanel((value) => !value)}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
                             Image
                         </button>
                         <button className={`topbar-btn ${showBonePanel ? 'active' : ''}`} onClick={() => setShowBonePanel((value) => !value)}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" /><line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" /><line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" /><line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="17" y1="16" x2="23" y2="16" /></svg>
                             Bones
                         </button>
                         <button className={`topbar-btn ${showAllPoints ? 'active' : ''}`} onClick={() => setShowAllPoints((value) => !value)}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><circle cx="5" cy="12" r="3" /><circle cx="19" cy="12" r="3" /></svg>
                             Points
                         </button>
                     </div>
 
                     <div className="export-actions">
-                        <button className="topbar-btn" disabled={!canExport} onClick={handleExportJson}>
+                        <button className="topbar-btn" disabled={!hasPoseData} onClick={handleExportJson}>
                             JSON
                         </button>
-                        <button className="topbar-btn primary" disabled={!canExport} onClick={handleExportGlb}>
+                        <button className="topbar-btn primary" disabled={!hasPoseData} onClick={handleExportGlb}>
                             GLB
                         </button>
                     </div>
@@ -1111,12 +1097,6 @@ export default function PoseEditor() {
                             <div className="drop-placeholder">
                                 <div className="drop-icon">🖼️</div>
                                 <div className="drop-title">Drop your image here</div>
-                                <div className="drop-hint">or click to browse files</div>
-                                <div className="drop-formats">
-                                    <span className="format-tag">JPG</span>
-                                    <span className="format-tag">PNG</span>
-                                    <span className="format-tag">WEBP</span>
-                                </div>
                             </div>
                         )}
 
@@ -1142,48 +1122,12 @@ export default function PoseEditor() {
                     <div className="image-actions">
                         <button
                             className="action-btn reset-btn"
-                            disabled={!imageSrc}
-                            onClick={() => {
-                                if (previewUrlRef.current) {
-                                    URL.revokeObjectURL(previewUrlRef.current);
-                                    previewUrlRef.current = '';
-                                }
-                                setImageSrc('');
-                                setImageReady(false);
-                                setImageStats('');
-                                setHasPoseData(false);
-                                setBadge({ text: 'Waiting', tone: 'info' });
-                                setStep(1);
-                                setSelectedBone(null);
-                                sceneStateRef.current.selectedBone = null;
-                                hideBoneIndicator();
-                                setExportModalOpen(false);
-                                setExportText('');
-                                setBoneRotation({ x: 0, y: 0, z: 0 });
-                                setBoneFilter('');
-                                setActivePanel('view-bones');
-                                setModelPosition({ x: 0, y: 0, z: 0 });
-                                if (sceneStateRef.current.modelContainer) {
-                                    sceneStateRef.current.modelContainer.position.set(0, 0, 0);
-                                }
-                                const canvas = overlayCanvasRef.current;
-                                if (canvas) {
-                                    const context = canvas.getContext('2d');
-                                    context?.clearRect(0, 0, canvas.width, canvas.height);
-                                }
-                                if (imageInputRef.current) {
-                                    imageInputRef.current.value = '';
-                                }
-                                if (sceneStateRef.current.model) {
-                                    applyTPose();
-                                }
-                                showToast('↻', 'Reset — ready for a new image');
-                            }}
+                            onClick={() => window.location.reload()}
                         >
                             ↻ Reset
                         </button>
 
-                        <button className="action-btn extract" disabled={!canExtract} onClick={handleExtractAndApply}>
+                        <button className="action-btn extract" disabled={!imageReady || !isModelReady} onClick={handleExtractAndApply}>
                             ✨ Extract & Apply Pose
                         </button>
                     </div>
@@ -1216,24 +1160,42 @@ export default function PoseEditor() {
 
                     {activePanel === 'view-bones' ? (
                         <div className="panel-view active">
-                            <input
-                                id="boneSearch"
-                                type="text"
-                                placeholder="Search bones…"
-                                value={boneFilter}
-                                onChange={(event) => setBoneFilter(event.target.value)}
-                            />
+                            <div className="search-box">
+                                <input
+                                    type="text"
+                                    id="boneSearch"
+                                    placeholder="Search bones..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                                {searchQuery && <button className="clear-search" onClick={() => setSearchQuery('')}>✕</button>}
+                            </div>
+
                             <div id="boneList">
-                                {filteredBoneNames.map((name) => (
-                                    <button
-                                        key={name}
-                                        type="button"
-                                        className={`bone-item ${selectedBone === name ? 'selected' : ''}`}
-                                        onClick={() => selectBone(name)}
-                                    >
-                                        {name.replace('mixamorig_', '')}
-                                    </button>
-                                ))}
+                                {Object.entries(boneCategories).map(([catName, bones]) => {
+                                    const filtered = bones.filter(name => name.toLowerCase().includes(searchQuery.toLowerCase()));
+                                    if (filtered.length === 0) return null;
+                                    return (
+                                        <div key={catName} className="bone-group">
+                                            <div className="bone-group-header">{catName}</div>
+                                            {filtered.map((name) => (
+                                                <button
+                                                    key={name}
+                                                    className={`bone-item ${selectedBone === name ? 'selected' : ''}`}
+                                                    onClick={() => selectBone(name)}
+                                                >
+                                                    {name.replace('mixamorig_', '')}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="panel-actions">
+                                <button className="panel-action-btn danger" onClick={handleResetAll}>
+                                    Reset Full Pose
+                                </button>
                             </div>
 
                             <div id="boneEditor">
