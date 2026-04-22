@@ -105,10 +105,10 @@
                     <div class="grid grid-cols-1 gap-2">
                         <button id="upload-video-btn" class="flex w-full items-center justify-center rounded-2xl bg-purple-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-purple-400">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                            Upload Video / Image
+                            Upload Video
                         </button>
                     </div>
-                    <input id="video-file-input" type="file" accept="video/*,image/*" style="display: none;">
+                    <input id="video-file-input" type="file" accept="video/*" style="display: none;">
                 </div>
 
                 <div class="mt-5 rounded-3xl border border-white/10 bg-white/[0.035] p-4">
@@ -198,7 +198,6 @@
                     </div>
                     <div id="video-stage" class="min-h-0 flex-1 rounded-[1.5rem] border border-white/10 bg-slate-950/90">
                         <video id="source-video" autoplay muted playsinline></video>
-                        <img id="source-image" style="display: none; width: 100%; height: 100%; object-fit: contain;">
                         <canvas id="pose-overlay"></canvas>
                     </div>
                 </section>
@@ -410,7 +409,6 @@
         let latestPosePackets = [];
         let rootBaselines = [];
         let isPlayingUploadedVideo = false;
-        let isStaticImageMode = false;
 
         let glbModels = [];
         let glbBonesMaps = [];
@@ -446,7 +444,6 @@
             ui.recordBtn = document.getElementById('record-btn');
             ui.clearBtn = document.getElementById('clear-btn');
             ui.saveLibraryBtn = document.getElementById('save-library-btn');
-            ui.sourceImage = document.getElementById('source-image');
             ui.animationName = document.getElementById('animation-name');
             ui.characterColor = document.getElementById('character-color');
             ui.secondCharacterColor = document.getElementById('second-character-color');
@@ -1164,18 +1161,14 @@
         }
 
         async function processFrame() {
-            if (!isStaticImageMode || isRecording) {
-                animationFrameId = requestAnimationFrame(processFrame);
-            }
+            animationFrameId = requestAnimationFrame(processFrame);
 
             if (isProcessingFrame) return;
-            if (!mediaStream && !isPlayingUploadedVideo && !isStaticImageMode) return;
-            
-            if (!isStaticImageMode) {
-                if (ui.sourceVideo.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
-                if (ui.sourceVideo.currentTime === lastProcessedVideoTime && !(isManualAssistBackend() && isRecording)) return;
-                lastProcessedVideoTime = ui.sourceVideo.currentTime;
-            }
+            if (!mediaStream && !isPlayingUploadedVideo) return;
+            if (ui.sourceVideo.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+            if (ui.sourceVideo.currentTime === lastProcessedVideoTime && !(isManualAssistBackend() && isRecording)) return;
+
+            lastProcessedVideoTime = ui.sourceVideo.currentTime;
             isProcessingFrame = true;
 
             try {
@@ -1232,40 +1225,21 @@
                     stopScreenShare({ preservePose: true, skipStatus: true });
                 }
 
-                const url = URL.createObjectURL(file);
-                const isImage = file.type.startsWith('image/');
-                
-                if (isImage) {
-                    isStaticImageMode = true;
-                    isPlayingUploadedVideo = false;
-                    ui.sourceVideo.style.display = 'none';
-                    ui.sourceImage.style.display = 'block';
-                    ui.sourceImage.src = url;
-                    ui.videoMeta.textContent = file.name;
-                    
-                    // Wait for image to load to get dimensions
-                    await new Promise(resolve => {
-                        ui.sourceImage.onload = resolve;
-                    });
-                } else {
-                    isStaticImageMode = false;
-                    isPlayingUploadedVideo = true;
-                    ui.sourceImage.style.display = 'none';
-                    ui.sourceVideo.style.display = 'block';
-                    ui.sourceVideo.src = url;
-                    ui.sourceVideo.controls = true;
-                    ui.videoMeta.textContent = file.name;
-                    
-                    ui.sourceVideo.play().catch(err => {
-                        console.error('Video playback error:', err);
-                        setStatus('Could not play the video file. Try a different format (MP4, WebM, etc.).', 'error');
-                    });
-                }
-
+                const videoUrl = URL.createObjectURL(file);
+                ui.sourceVideo.src = videoUrl;
+                ui.sourceVideo.controls = true;
+                ui.videoMeta.textContent = file.name;
+                isPlayingUploadedVideo = true;
                 rootBaselines = [];
                 lastProcessedVideoTime = -1;
+
+                ui.sourceVideo.play().catch(err => {
+                    console.error('Video playback error:', err);
+                    setStatus('Could not play the video file. Try a different format (MP4, WebM, etc.).', 'error');
+                });
+
                 processFrame();
-                setStatus(`${isImage ? 'Image' : 'Video'} loaded. ${isImage ? 'Adjust crop if needed, then record.' : 'Play the video and let the skeleton lock onto the performer, then record.'}`, 'success');
+                setStatus('Video loaded. Play the video and let the skeleton lock onto the performer, then record.', 'success');
 
                 ui.videoFileInput.value = '';
             } catch (error) {
@@ -1277,16 +1251,14 @@
 
         function getPrimaryDetectionFrame() {
             const region = getActiveSourceRegion();
-            const source = isStaticImageMode ? ui.sourceImage : ui.sourceVideo;
-            
             if (!region) {
-                return { source, region: null };
+                return { source: ui.sourceVideo, region: null };
             }
 
-            const sourceWidth = (isStaticImageMode ? source.naturalWidth : source.videoWidth) || 0;
-            const sourceHeight = (isStaticImageMode ? source.naturalHeight : source.videoHeight) || 0;
+            const sourceWidth = ui.sourceVideo.videoWidth || 0;
+            const sourceHeight = ui.sourceVideo.videoHeight || 0;
             if (!sourceWidth || !sourceHeight || !drawRegionToScanCanvas(region, sourceWidth, sourceHeight)) {
-                return { source, region: null };
+                return { source: ui.sourceVideo, region: null };
             }
 
             return { source: regionScanCanvas, region };
