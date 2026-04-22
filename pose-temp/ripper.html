@@ -99,17 +99,16 @@
                         <h1 class="mt-2 text-2xl font-semibold text-white">Motion Ripper</h1>
 
                     </div>
-                    <a href="./Index.html" class="inline-flex shrink-0 items-center rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-white/10">Back To Poser</a>
                 </div>
 
                 <div class="mt-5 space-y-3">
                     <div class="grid grid-cols-1 gap-2">
                         <button id="upload-video-btn" class="flex w-full items-center justify-center rounded-2xl bg-purple-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-purple-400">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                            Upload Video
+                            Upload Video / Image
                         </button>
                     </div>
-                    <input id="video-file-input" type="file" accept="video/*" style="display: none;">
+                    <input id="video-file-input" type="file" accept="video/*,image/*" style="display: none;">
                 </div>
 
                 <div class="mt-5 rounded-3xl border border-white/10 bg-white/[0.035] p-4">
@@ -182,14 +181,7 @@
 
                     </div>
 
-                    <div class="mt-4 grid grid-cols-2 gap-2">
-                        <button id="record-btn" class="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400">
-                            Start Record
-                        </button>
-                        <button id="export-btn" class="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-white">
-                            Export JSON
-                        </button>
-                    </div>
+
                 </div>
 
 
@@ -206,6 +198,7 @@
                     </div>
                     <div id="video-stage" class="min-h-0 flex-1 rounded-[1.5rem] border border-white/10 bg-slate-950/90">
                         <video id="source-video" autoplay muted playsinline></video>
+                        <img id="source-image" style="display: none; width: 100%; height: 100%; object-fit: contain;">
                         <canvas id="pose-overlay"></canvas>
                     </div>
                 </section>
@@ -216,9 +209,6 @@
                             <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Rig Preview</p>
                             <h2 class="mt-1 text-lg font-semibold text-white">Mapped Character</h2>
                         </div>
-                        <a href="./Index.html" class="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-white/10">
-                            Open Index
-                        </a>
                     </div>
                     <div class="mb-3">
                         <label class="block">
@@ -420,6 +410,8 @@
         let latestPosePackets = [];
         let rootBaselines = [];
         let isPlayingUploadedVideo = false;
+        let isStaticImageMode = false;
+
         let glbModels = [];
         let glbBonesMaps = [];
         let glbRestQuaternions = [];
@@ -454,7 +446,7 @@
             ui.recordBtn = document.getElementById('record-btn');
             ui.clearBtn = document.getElementById('clear-btn');
             ui.saveLibraryBtn = document.getElementById('save-library-btn');
-            ui.exportBtn = document.getElementById('export-btn');
+            ui.sourceImage = document.getElementById('source-image');
             ui.animationName = document.getElementById('animation-name');
             ui.characterColor = document.getElementById('character-color');
             ui.secondCharacterColor = document.getElementById('second-character-color');
@@ -494,10 +486,9 @@
             ui.videoFileInput?.addEventListener('change', handleVideoFileSelected);
             ui.stopShareBtn?.addEventListener('click', stopScreenShare);
             ui.neutralBtn?.addEventListener('click', captureNeutralPose);
-            ui.recordBtn.addEventListener('click', toggleRecording);
+            ui.recordBtn?.addEventListener('click', toggleRecording);
             ui.clearBtn?.addEventListener('click', clearRecording);
             ui.saveLibraryBtn?.addEventListener('click', saveAnimationToLibrary);
-            ui.exportBtn.addEventListener('click', exportAnimation);
             ui.characterColor.addEventListener('input', () => setCharacterColorByIndex(0, ui.characterColor.value));
             ui.secondCharacterColor?.addEventListener('input', () => setCharacterColorByIndex(1, ui.secondCharacterColor.value));
             ui.multiCharacter?.addEventListener('change', handleMultiCharacterChanged);
@@ -543,10 +534,13 @@
                 antialias: true,
                 alpha: true
             });
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.setSize(ui.previewCanvas.clientWidth, ui.previewCanvas.clientHeight, false);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit to 2 for performance
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+            // Use ResizeObserver for crisp resolution
+            const resizeObserver = new ResizeObserver(() => handleResize());
+            resizeObserver.observe(ui.previewCanvas);
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
             scene.add(ambientLight);
@@ -1170,14 +1164,18 @@
         }
 
         async function processFrame() {
-            animationFrameId = requestAnimationFrame(processFrame);
+            if (!isStaticImageMode || isRecording) {
+                animationFrameId = requestAnimationFrame(processFrame);
+            }
 
             if (isProcessingFrame) return;
-            if (!mediaStream && !isPlayingUploadedVideo) return;
-            if (ui.sourceVideo.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
-            if (ui.sourceVideo.currentTime === lastProcessedVideoTime && !(isManualAssistBackend() && isRecording)) return;
-
-            lastProcessedVideoTime = ui.sourceVideo.currentTime;
+            if (!mediaStream && !isPlayingUploadedVideo && !isStaticImageMode) return;
+            
+            if (!isStaticImageMode) {
+                if (ui.sourceVideo.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+                if (ui.sourceVideo.currentTime === lastProcessedVideoTime && !(isManualAssistBackend() && isRecording)) return;
+                lastProcessedVideoTime = ui.sourceVideo.currentTime;
+            }
             isProcessingFrame = true;
 
             try {
@@ -1234,41 +1232,61 @@
                     stopScreenShare({ preservePose: true, skipStatus: true });
                 }
 
-                const videoUrl = URL.createObjectURL(file);
-                ui.sourceVideo.src = videoUrl;
-                ui.sourceVideo.controls = true;
-                ui.videoMeta.textContent = file.name;
-                isPlayingUploadedVideo = true;
+                const url = URL.createObjectURL(file);
+                const isImage = file.type.startsWith('image/');
+                
+                if (isImage) {
+                    isStaticImageMode = true;
+                    isPlayingUploadedVideo = false;
+                    ui.sourceVideo.style.display = 'none';
+                    ui.sourceImage.style.display = 'block';
+                    ui.sourceImage.src = url;
+                    ui.videoMeta.textContent = file.name;
+                    
+                    // Wait for image to load to get dimensions
+                    await new Promise(resolve => {
+                        ui.sourceImage.onload = resolve;
+                    });
+                } else {
+                    isStaticImageMode = false;
+                    isPlayingUploadedVideo = true;
+                    ui.sourceImage.style.display = 'none';
+                    ui.sourceVideo.style.display = 'block';
+                    ui.sourceVideo.src = url;
+                    ui.sourceVideo.controls = true;
+                    ui.videoMeta.textContent = file.name;
+                    
+                    ui.sourceVideo.play().catch(err => {
+                        console.error('Video playback error:', err);
+                        setStatus('Could not play the video file. Try a different format (MP4, WebM, etc.).', 'error');
+                    });
+                }
+
                 rootBaselines = [];
                 lastProcessedVideoTime = -1;
-
-                ui.sourceVideo.play().catch(err => {
-                    console.error('Video playback error:', err);
-                    setStatus('Could not play the video file. Try a different format (MP4, WebM, etc.).', 'error');
-                });
-
                 processFrame();
-                setStatus('Video loaded. Play the video and let the skeleton lock onto the performer, then record.', 'success');
+                setStatus(`${isImage ? 'Image' : 'Video'} loaded. ${isImage ? 'Adjust crop if needed, then record.' : 'Play the video and let the skeleton lock onto the performer, then record.'}`, 'success');
 
-                // Reset file input so same file can be selected again
                 ui.videoFileInput.value = '';
             } catch (error) {
                 console.error(error);
-                setStatus('Could not load the video file.', 'error');
+                setStatus('Could not load the file.', 'error');
                 ui.videoFileInput.value = '';
             }
         }
 
         function getPrimaryDetectionFrame() {
             const region = getActiveSourceRegion();
+            const source = isStaticImageMode ? ui.sourceImage : ui.sourceVideo;
+            
             if (!region) {
-                return { source: ui.sourceVideo, region: null };
+                return { source, region: null };
             }
 
-            const sourceWidth = ui.sourceVideo.videoWidth || 0;
-            const sourceHeight = ui.sourceVideo.videoHeight || 0;
+            const sourceWidth = (isStaticImageMode ? source.naturalWidth : source.videoWidth) || 0;
+            const sourceHeight = (isStaticImageMode ? source.naturalHeight : source.videoHeight) || 0;
             if (!sourceWidth || !sourceHeight || !drawRegionToScanCanvas(region, sourceWidth, sourceHeight)) {
-                return { source: ui.sourceVideo, region: null };
+                return { source, region: null };
             }
 
             return { source: regionScanCanvas, region };
@@ -2361,15 +2379,7 @@
             };
         }
 
-        function exportAnimation() {
-            try {
-                const asset = createAnimationAsset();
-                downloadAssetFile(asset);
-                setStatus(`Animation "${asset.name}" exported as JSON. Import it from the main Index.html animation library.`, 'success');
-            } catch (error) {
-                setStatus(error instanceof Error ? error.message : 'Could not export the animation.', 'error');
-            }
-        }
+
 
         function saveAnimationToLibrary() {
             try {
@@ -2388,7 +2398,7 @@
                 setStatus(`Animation "${asset.name}" was saved into the shared browser library. Open Index.html and load it from Animation Library.`, 'success');
             } catch (error) {
                 console.error(error);
-                setStatus('Could not save into the shared browser library. Use Export JSON instead.', 'error');
+                setStatus('Could not save into the shared browser library.', 'error');
             }
         }
 
@@ -2603,10 +2613,12 @@
         }
 
         function updateRecordingUi() {
-            ui.recordBtn.textContent = isRecording ? 'Stop Record' : 'Start Record';
-            ui.recordBtn.className = isRecording
-                ? 'rounded-2xl bg-rose-500 px-4 py-3 text-sm font-semibold text-rose-950 transition hover:bg-rose-400'
-                : 'rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400';
+            if (ui.recordBtn) {
+                ui.recordBtn.textContent = isRecording ? 'Stop Record' : 'Start Record';
+                ui.recordBtn.className = isRecording
+                    ? 'rounded-2xl bg-rose-500 px-4 py-3 text-sm font-semibold text-rose-950 transition hover:bg-rose-400'
+                    : 'rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400';
+            }
             ui.recordingBadge.textContent = isRecording ? 'Recording' : 'Idle';
             ui.recordingBadge.className = isRecording
                 ? 'rounded-full border border-rose-400/25 bg-rose-400/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-rose-200'
@@ -2637,8 +2649,10 @@
         }
 
         function handleResize() {
+            if (!ui.previewCanvas || !renderer) return;
             const width = ui.previewCanvas.clientWidth || 1;
             const height = ui.previewCanvas.clientHeight || 1;
+            
             camera.aspect = width / height;
             camera.updateProjectionMatrix();
             renderer.setSize(width, height, false);
