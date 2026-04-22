@@ -399,7 +399,7 @@ export default function PoseExtractor() {
                     )}
                     <div style={styles.jsonActions}>
                         <button className="btn" disabled={!hasData} onClick={copyToClipboard} style={{ flex: 1 }}>Copy</button>
-                        <button className="btn" disabled={!hasData} onClick={downloadJson} style={{ flex: 1 }}>Download</button>
+                        <button className="btn" disabled={!hasData} onClick={downloadJson} style={{ flex: 1 }}>Export</button>
                     </div>
                     <pre style={{ ...styles.jsonOutput, color: hasData ? 'var(--text-color)' : 'var(--muted)' }}>
                         {hasData ? (

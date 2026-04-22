@@ -448,12 +448,17 @@ export default function PoseEditor() {
                     console.log('DEBUG: Model bounding box - size:', size, 'center:', center);
                     const scale = 1.8 / Math.max(size.x, size.y, size.z);
                     model.scale.setScalar(scale);
-                    model.position.sub(center.multiplyScalar(scale));
-                    model.position.y -= box.min.y * scale;
+                    
+                    // Center on X and Z, feet at Y=0
+                    model.position.x = -center.x * scale;
+                    model.position.z = -center.z * scale;
+                    model.position.y = -box.min.y * scale;
+                    
                     console.log('DEBUG: Model scaled and positioned. Scale:', scale, 'Position:', model.position);
 
                     sceneStateRef.current.target.set(0, size.y * scale * 0.5, 0);
                     sceneStateRef.current.spherical.radius = Math.max(size.x, size.y, size.z) * scale * 1.6;
+                    if (sceneStateRef.current.updateCamera) sceneStateRef.current.updateCamera();
 
                     sceneStateRef.current.boneMap = {};
                     sceneStateRef.current.currentPoseRotations = {};
@@ -520,6 +525,7 @@ export default function PoseEditor() {
             );
             camera.lookAt(state.target);
         };
+        state.updateCamera = updateCamera;
 
         updateCamera();
 
@@ -1049,52 +1055,41 @@ export default function PoseEditor() {
                     Image → Pose
                 </div>
 
-                <div className={`step-indicator ${step >= 2 ? 'done' : step === 1 ? 'active' : ''}`}>
-                    <span className="step-num">1</span>
-                    Upload Image
-                </div>
-                <span className="step-arrow">→</span>
-                <div className={`step-indicator ${step >= 3 ? 'done' : step === 2 ? 'active' : ''}`}>
-                    <span className="step-num">2</span>
-                    Extract Pose
-                </div>
-                <span className="step-arrow">→</span>
-                <div className={`step-indicator ${step >= 3 ? 'active' : ''}`}>
-                    <span className="step-num">3</span>
-                    Apply to Model
+                <div className="step-breadcrumbs">
+                    <span className={`breadcrumb-item ${step >= 1 ? 'active' : ''}`}>Upload Image</span>
+                    <svg className="breadcrumb-separator" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+                    <span className={`breadcrumb-item ${step >= 2 ? 'active' : ''}`}>Extract Pose</span>
+                    <svg className="breadcrumb-separator" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+                    <span className={`breadcrumb-item ${step >= 3 ? 'active' : ''}`}>Apply to Model</span>
                 </div>
 
                 <div className="studio-spacer" />
 
-                <button className={`topbar-btn ${showImagePanel ? 'active' : ''}`} onClick={() => setShowImagePanel((value) => !value)}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
-                    Image
-                </button>
+                <div className="topbar-actions">
+                    <div className="panel-toggles">
+                        <button className={`topbar-btn ${showImagePanel ? 'active' : ''}`} onClick={() => setShowImagePanel((value) => !value)}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+                            Image
+                        </button>
+                        <button className={`topbar-btn ${showBonePanel ? 'active' : ''}`} onClick={() => setShowBonePanel((value) => !value)}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" /><line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" /><line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" /><line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="17" y1="16" x2="23" y2="16" /></svg>
+                            Bones
+                        </button>
+                        <button className={`topbar-btn ${showAllPoints ? 'active' : ''}`} onClick={() => setShowAllPoints((value) => !value)}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><circle cx="5" cy="12" r="3" /><circle cx="19" cy="12" r="3" /></svg>
+                            Points
+                        </button>
+                    </div>
 
-                <button className={`topbar-btn ${showBonePanel ? 'active' : ''}`} onClick={() => setShowBonePanel((value) => !value)}>
-                    <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" /></svg>
-                    Bones
-                </button>
-
-                <button className={`topbar-btn ${showAllPoints ? 'active' : ''}`} onClick={() => setShowAllPoints((value) => !value)}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><circle cx="5" cy="12" r="3" /><circle cx="19" cy="12" r="3" /></svg>
-                    Points
-                </button>
-
-                <button className="topbar-btn" disabled={!canExport} onClick={handleExportJson}>
-                    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-                    Export JSON
-                </button>
-
-                <button className="topbar-btn primary" disabled={!canExport} onClick={handleExportGlb}>
-                    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-                    Export GLB
-                </button>
-
-                <button className="topbar-btn" onClick={() => navigate('/extract')}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><polyline points="13 2 13 9 20 9" /></svg>
-                    Extract Pose
-                </button>
+                    <div className="export-actions">
+                        <button className="topbar-btn" disabled={!canExport} onClick={handleExportJson}>
+                            JSON
+                        </button>
+                        <button className="topbar-btn primary" disabled={!canExport} onClick={handleExportGlb}>
+                            GLB
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <div className="studio-main">
