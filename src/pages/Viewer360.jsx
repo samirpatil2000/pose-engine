@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { RotateCw, Upload } from 'lucide-react';
+import { RotateCw, Upload, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import './Viewer360.css';
 
 export default function Viewer360() {
+  const navigate = useNavigate();
   const containerRef = useRef(null);
   const sceneRef = useRef(null);
   const cameraRef = useRef(null);
@@ -15,6 +17,13 @@ export default function Viewer360() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
+  const objectUrlRef = useRef(null);
+
+  const handleClose = () => {
+    // Prefer back navigation; fall back to Home.
+    if (window.history.length > 1) navigate(-1);
+    else navigate('/');
+  };
 
   // Initialize Three.js scene
   useEffect(() => {
@@ -147,6 +156,15 @@ export default function Viewer360() {
     }
   }, []);
 
+  // ESC exits, like the reference UX
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') handleClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   // Load panorama image
   useEffect(() => {
     if (!imageUrl || !sceneRef.current || !cameraRef.current) return;
@@ -194,10 +212,6 @@ export default function Viewer360() {
         setIsLoading(false);
       }
     );
-
-    return () => {
-      textureLoader.manager.itemStart('error');
-    };
   }, [imageUrl]);
 
   const handleFileSelect = (e) => {
@@ -210,9 +224,25 @@ export default function Viewer360() {
     }
 
     setError('');
+
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
+
     const url = URL.createObjectURL(file);
+    objectUrlRef.current = url;
     setImageUrl(url);
   };
+
+  useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
+    };
+  }, []);
 
   const handleReset = () => {
     if (controlsRef.current && cameraRef.current) {
@@ -226,6 +256,48 @@ export default function Viewer360() {
 
   return (
     <div className="viewer360-wrapper">
+      <div className="viewer360-hud" aria-hidden={false}>
+        <div className="viewer360-hud-left">
+          <div className="viewer360-hud-badge" aria-hidden="true" />
+          <div className="viewer360-hud-text">
+            <div className="viewer360-hud-title">360° View</div>
+            <div className="viewer360-hud-subtitle">Drag to explore</div>
+          </div>
+        </div>
+
+        <div className="viewer360-hud-right">
+          {imageUrl && (
+            <div className="viewer360-hud-actions">
+              <button
+                className="viewer360-iconbtn"
+                onClick={() => fileInputRef.current?.click()}
+                title="Change image"
+                type="button"
+              >
+                <Upload size={16} />
+              </button>
+              <button
+                className="viewer360-iconbtn"
+                onClick={handleReset}
+                title="Reset view"
+                type="button"
+              >
+                <RotateCw size={16} />
+              </button>
+            </div>
+          )}
+
+          <button
+            className="viewer360-close"
+            onClick={handleClose}
+            title="Close"
+            type="button"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      </div>
+
       <div className="viewer360-container" ref={containerRef}>
         {!imageUrl && (
           <div className="viewer360-placeholder">
@@ -234,8 +306,9 @@ export default function Viewer360() {
               <h2>Load 360° Image</h2>
               <p>Upload an equirectangular panorama image to view</p>
               <button
-                className="btn btn-primary"
+                className="viewer360-upload-btn"
                 onClick={() => fileInputRef.current?.click()}
+                type="button"
               >
                 Choose Image
               </button>
@@ -253,34 +326,8 @@ export default function Viewer360() {
         )}
       </div>
 
-      {/* Controls */}
-      <div className="viewer360-controls">
-        <div className="controls-info">
-          <p>Drag to rotate • Scroll to zoom</p>
-        </div>
-
-        <div className="controls-buttons">
-          {imageUrl && (
-            <>
-              <button
-                className="btn btn-secondary"
-                onClick={() => fileInputRef.current?.click()}
-                title="Load different image"
-              >
-                <Upload size={16} />
-                Change Image
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={handleReset}
-                title="Reset view"
-              >
-                <RotateCw size={16} />
-                Reset
-              </button>
-            </>
-          )}
-        </div>
+      <div className="viewer360-esc-hint">
+        Press <kbd>ESC</kbd> to exit
       </div>
 
       <input

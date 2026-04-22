@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import './App.css';
 import Home from './pages/Home';
 import PoseEditor from './pages/PoseEditor';
@@ -39,9 +39,12 @@ function TabBar() {
 }
 
 function AppRoutes() {
+  const location = useLocation();
+  const isFullscreenRoute = location.pathname === '/360';
+
   return (
     <>
-      <TabBar />
+      {!isFullscreenRoute && <TabBar />}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/editor" element={<PoseEditor />} />
