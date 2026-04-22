@@ -1,4 +1,4 @@
-# Pose Sculpt
+# Pose Engine
 
 A tool for viewing and manipulating 3D skeletal poses.
 

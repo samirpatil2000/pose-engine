@@ -1,8 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 .pose-editor-studio {
-  position: relative;
-  height: 100vh;
+  position: fixed;
+  top: 60px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(100vh - 60px);
   overflow: hidden;
   background:
     radial-gradient(circle at top left, rgba(10, 132, 255, 0.18), transparent 28%),
@@ -15,7 +19,9 @@
 
 .studio-topbar {
   position: absolute;
-  inset: 0 0 auto 0;
+  top: 0;
+  left: 0;
+  right: 0;
   height: 64px;
   display: flex;
   align-items: center;

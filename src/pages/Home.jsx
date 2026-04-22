@@ -31,7 +31,7 @@ export default function Home() {
         {/* Hero Section */}
         <section className="hero">
           <div className="hero-text">
-            <h1>Pose Sculpt</h1>
+            <h1>Pose Engine</h1>
             <p>Create, extract, and explore 3D poses and 360-degree visuals with precision and ease.</p>
           </div>
         </section>
