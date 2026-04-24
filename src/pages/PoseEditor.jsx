@@ -300,7 +300,8 @@ export default function PoseEditor() {
 
     const setBoneRotationValue = (axis, value) => {
         if (!selectedBone) return;
-        const nextRotation = { ...boneRotation, [axis]: value };
+        const currentRotation = sceneStateRef.current.currentPoseRotations[selectedBone] || { x: 0, y: 0, z: 0 };
+        const nextRotation = { ...currentRotation, [axis]: value };
         const bone = sceneStateRef.current.boneMap[selectedBone];
         if (!bone) return;
 
@@ -440,18 +441,47 @@ export default function PoseEditor() {
                     sceneStateRef.current.model = model;
                     sceneStateRef.current.modelContainer.add(model);
 
-                    const box = new THREE.Box3().setFromObject(model);
-                    const size = box.getSize(new THREE.Vector3());
-                    const center = box.getCenter(new THREE.Vector3());
-                    const scale = 1.8 / Math.max(size.x, size.y, size.z);
-                    model.scale.setScalar(scale);
-                    
-                    model.position.x = -center.x * scale;
-                    model.position.z = -center.z * scale;
-                    model.position.y = -box.min.y * scale;
-                    
-                    sceneStateRef.current.target.set(0, size.y * scale * 0.5, 0);
-                    sceneStateRef.current.spherical.radius = Math.max(size.y * scale, size.x * scale) * 2.0;
+                    // Normalize: scale + center the *scaled* bounds (GLBs can have baked offsets/scales).
+                    model.position.set(0, 0, 0);
+                    model.updateMatrixWorld(true);
+
+                    const initialBox = new THREE.Box3().setFromObject(model);
+                    const initialSize = initialBox.getSize(new THREE.Vector3());
+                    const scaleFactor = 1.8 / Math.max(initialSize.x, initialSize.y, initialSize.z, 0.000001);
+
+                    // Preserve any existing model scale by multiplying.
+                    model.scale.multiplyScalar(scaleFactor);
+                    model.updateMatrixWorld(true);
+
+                    const scaledBox = new THREE.Box3().setFromObject(model);
+                    const scaledCenter = scaledBox.getCenter(new THREE.Vector3());
+                    model.position.x -= scaledCenter.x;
+                    model.position.z -= scaledCenter.z;
+                    model.updateMatrixWorld(true);
+
+                    // Put feet on the "floor".
+                    const groundedBox = new THREE.Box3().setFromObject(model);
+                    model.position.y -= groundedBox.min.y;
+                    model.updateMatrixWorld(true);
+
+                    // Fit camera to the model's *actual* post-transform bounds.
+                    const camera = sceneStateRef.current.camera;
+                    const objectForFit = sceneStateRef.current.modelContainer || model;
+                    const fittedBox = new THREE.Box3().setFromObject(objectForFit);
+
+                    if (!fittedBox.isEmpty() && camera) {
+                        const fittedSize = fittedBox.getSize(new THREE.Vector3());
+                        const fittedCenter = fittedBox.getCenter(new THREE.Vector3());
+                        sceneStateRef.current.target.copy(fittedCenter);
+
+                        const viewportW = viewportRef.current?.clientWidth || width;
+                        const viewportH = viewportRef.current?.clientHeight || height;
+                        const aspect = viewportW / Math.max(1, viewportH);
+                        const fov = (camera.fov * Math.PI) / 180;
+                        const hFit = fittedSize.y / (2 * Math.tan(fov / 2));
+                        const wFit = fittedSize.x / (2 * Math.tan(fov / 2) * aspect);
+                        sceneStateRef.current.spherical.radius = Math.max(hFit, wFit) * 2.0;
+                    }
 
                     if (sceneStateRef.current.updateCamera) sceneStateRef.current.updateCamera();
 
@@ -609,7 +639,8 @@ export default function PoseEditor() {
             
             // Adjust radius to fit model on resize
             if (state.model) {
-                const box = new THREE.Box3().setFromObject(state.model);
+                const objectForFit = state.modelContainer || state.model;
+                const box = new THREE.Box3().setFromObject(objectForFit);
                 const size = box.getSize(new THREE.Vector3());
                 const aspect = nextWidth / nextHeight;
                 const fov = 45 * Math.PI / 180;
