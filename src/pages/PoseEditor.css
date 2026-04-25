@@ -88,7 +88,7 @@
   gap: 24px;
 }
 
-.panel-toggles, .export-actions {
+.panel-toggles, .export-actions, .history-controls {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -96,6 +96,13 @@
   padding: 4px;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.topbar-btn.icon-btn {
+  width: 32px;
+  padding: 0;
+  justify-content: center;
+  font-size: 16px;
 }
 
 .topbar-btn {
@@ -570,6 +577,111 @@
   padding: 16px 20px;
   overflow-y: auto;
   min-height: 0;
+}
+
+.preset-card-wrapper {
+  position: relative;
+}
+
+.preset-delete-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 69, 58, 0.15);
+  color: #ff453a;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease, background 0.2s ease;
+}
+
+.preset-card-wrapper:hover .preset-delete-btn {
+  opacity: 1;
+}
+
+.preset-delete-btn:hover {
+  background: rgba(255, 69, 58, 0.3);
+}
+
+.preset-save-section {
+  padding: 12px 20px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.preset-name-input-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.preset-name-input {
+  flex: 1;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(10, 132, 255, 0.5);
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.15);
+}
+
+.preset-name-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.preset-save-confirm {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: none;
+  background: #0a84ff;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  white-space: nowrap;
+}
+
+.preset-save-confirm:hover:not(:disabled) {
+  background: #0071e3;
+}
+
+.preset-save-confirm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.preset-save-cancel {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.preset-save-cancel:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
 }
 
 .preset-card {

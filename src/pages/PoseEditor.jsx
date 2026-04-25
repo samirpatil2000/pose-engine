@@ -39,6 +39,32 @@ const PREFERRED_CHILD = {
     mixamorig_RightFoot: 'mixamorig_RightToeBase',
 };
 
+const MIRROR_PAIRS = [
+    ['mixamorig_LeftShoulder', 'mixamorig_RightShoulder'],
+    ['mixamorig_LeftArm', 'mixamorig_RightArm'],
+    ['mixamorig_LeftForeArm', 'mixamorig_RightForeArm'],
+    ['mixamorig_LeftHand', 'mixamorig_RightHand'],
+    ['mixamorig_LeftHandThumb1', 'mixamorig_RightHandThumb1'],
+    ['mixamorig_LeftHandThumb2', 'mixamorig_RightHandThumb2'],
+    ['mixamorig_LeftHandThumb3', 'mixamorig_RightHandThumb3'],
+    ['mixamorig_LeftHandIndex1', 'mixamorig_RightHandIndex1'],
+    ['mixamorig_LeftHandIndex2', 'mixamorig_RightHandIndex2'],
+    ['mixamorig_LeftHandIndex3', 'mixamorig_RightHandIndex3'],
+    ['mixamorig_LeftHandMiddle1', 'mixamorig_RightHandMiddle1'],
+    ['mixamorig_LeftHandMiddle2', 'mixamorig_RightHandMiddle2'],
+    ['mixamorig_LeftHandMiddle3', 'mixamorig_RightHandMiddle3'],
+    ['mixamorig_LeftHandRing1', 'mixamorig_RightHandRing1'],
+    ['mixamorig_LeftHandRing2', 'mixamorig_RightHandRing2'],
+    ['mixamorig_LeftHandRing3', 'mixamorig_RightHandRing3'],
+    ['mixamorig_LeftHandPinky1', 'mixamorig_RightHandPinky1'],
+    ['mixamorig_LeftHandPinky2', 'mixamorig_RightHandPinky2'],
+    ['mixamorig_LeftHandPinky3', 'mixamorig_RightHandPinky3'],
+    ['mixamorig_LeftUpLeg', 'mixamorig_RightUpLeg'],
+    ['mixamorig_LeftLeg', 'mixamorig_RightLeg'],
+    ['mixamorig_LeftFoot', 'mixamorig_RightFoot'],
+    ['mixamorig_LeftToeBase', 'mixamorig_RightToeBase'],
+];
+
 const JOINT_LIMITS = {
     mixamorig_Hips: { x: [-0.6, 0.6], y: [-0.8, 0.8], z: [-0.5, 0.5] },
     mixamorig_Spine: { x: [-0.5, 0.3], y: [-0.3, 0.3], z: [-0.3, 0.3] },
@@ -282,6 +308,11 @@ export default function PoseEditor() {
     const previewUrlRef = useRef('');
     const poseLandmarkerRef = useRef(null);
     const initializedRef = useRef(false);
+    const undoStackRef = useRef([]);
+    const redoStackRef = useRef([]);
+    const beforeDragSnapshotRef = useRef(null);
+    const undoHandlerRef = useRef(null);
+    const redoHandlerRef = useRef(null);
     const sceneStateRef = useRef({
         scene: null,
         camera: null,
@@ -335,6 +366,105 @@ export default function PoseEditor() {
     const [leftPanelMode, setLeftPanelMode] = useState('image');
     const [jsonInputText, setJsonInputText] = useState('');
     const [jsonError, setJsonError] = useState('');
+    const [canUndo, setCanUndo] = useState(false);
+    const [canRedo, setCanRedo] = useState(false);
+    const [customPresets, setCustomPresets] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('posesculpt-presets') || '[]'); }
+        catch { return []; }
+    });
+    const [savePresetName, setSavePresetName] = useState('');
+    const [isSavingPreset, setIsSavingPreset] = useState(false);
+
+    const snapshotPose = () =>
+        JSON.parse(JSON.stringify(sceneStateRef.current.currentPoseRotations));
+
+    const pushUndo = (snapshot) => {
+        undoStackRef.current.push(snapshot);
+        if (undoStackRef.current.length > 50) undoStackRef.current.shift();
+        redoStackRef.current = [];
+        setCanUndo(true);
+        setCanRedo(false);
+    };
+
+    const restorePose = (snapshot) => {
+        const { boneMap, currentPoseRotations } = sceneStateRef.current;
+        Object.keys(boneMap).forEach((name) => {
+            boneMap[name].rotation.set(0, 0, 0);
+            currentPoseRotations[name] = { x: 0, y: 0, z: 0 };
+        });
+        Object.entries(snapshot).forEach(([name, rot]) => {
+            if (boneMap[name]) {
+                boneMap[name].rotation.set(rot.x, rot.y, rot.z);
+                currentPoseRotations[name] = { ...rot };
+            }
+        });
+        sceneStateRef.current.model?.updateMatrixWorld(true);
+        sceneStateRef.current.currentMixamoOutput = buildCurrentPoseOutput();
+        if (sceneStateRef.current.selectedBone) refreshBoneEditorState(sceneStateRef.current.selectedBone);
+    };
+
+    const handleUndo = () => {
+        if (undoStackRef.current.length === 0) return;
+        const current = snapshotPose();
+        redoStackRef.current.push(current);
+        restorePose(undoStackRef.current.pop());
+        setCanUndo(undoStackRef.current.length > 0);
+        setCanRedo(true);
+        showToast('↩', 'Undo');
+    };
+
+    const handleRedo = () => {
+        if (redoStackRef.current.length === 0) return;
+        const current = snapshotPose();
+        undoStackRef.current.push(current);
+        restorePose(redoStackRef.current.pop());
+        setCanUndo(true);
+        setCanRedo(redoStackRef.current.length > 0);
+        showToast('↪', 'Redo');
+    };
+
+    const mirrorPose = () => {
+        if (!isModelReady) return;
+        pushUndo(snapshotPose());
+        const { boneMap, currentPoseRotations } = sceneStateRef.current;
+        MIRROR_PAIRS.forEach(([leftBone, rightBone]) => {
+            const l = currentPoseRotations[leftBone] || { x: 0, y: 0, z: 0 };
+            const mirrored = { x: l.x, y: -l.y, z: -l.z };
+            if (boneMap[rightBone]) {
+                boneMap[rightBone].rotation.set(mirrored.x, mirrored.y, mirrored.z);
+                currentPoseRotations[rightBone] = mirrored;
+            }
+        });
+        sceneStateRef.current.model?.updateMatrixWorld(true);
+        sceneStateRef.current.currentMixamoOutput = buildCurrentPoseOutput();
+        if (sceneStateRef.current.selectedBone) refreshBoneEditorState(sceneStateRef.current.selectedBone);
+        showToast('↔', 'Mirrored L → R');
+    };
+
+    const saveCurrentPreset = () => {
+        const name = savePresetName.trim();
+        if (!name || !isModelReady) return;
+        const preset = {
+            id: `custom-${Date.now()}`,
+            name,
+            description: 'Custom saved pose',
+            rotations: snapshotPose(),
+            isCustom: true,
+        };
+        const updated = [...customPresets, preset];
+        setCustomPresets(updated);
+        try { localStorage.setItem('posesculpt-presets', JSON.stringify(updated)); } catch {}
+        setSavePresetName('');
+        setIsSavingPreset(false);
+        showToast('💾', `"${name}" saved`);
+    };
+
+    const deleteCustomPreset = (id) => {
+        const updated = customPresets.filter((p) => p.id !== id);
+        setCustomPresets(updated);
+        try { localStorage.setItem('posesculpt-presets', JSON.stringify(updated)); } catch {}
+        showToast('🗑', 'Preset deleted');
+    };
 
     const applyJsonPose = (poseData) => {
         if (!isModelReady) {
@@ -342,6 +472,7 @@ export default function PoseEditor() {
             return;
         }
 
+        pushUndo(snapshotPose());
         applyTPose();
 
         const { boneMap, currentPoseRotations } = sceneStateRef.current;
@@ -417,6 +548,7 @@ export default function PoseEditor() {
 
     const handleResetAll = () => {
         if (!sceneStateRef.current.boneMap) return;
+        pushUndo(snapshotPose());
         applyTPose();
         sceneStateRef.current.currentMixamoOutput = { ...sceneStateRef.current.tPoseData };
         setHasPoseData(false);
@@ -564,6 +696,7 @@ export default function PoseEditor() {
             return;
         }
 
+        pushUndo(snapshotPose());
         applyTPose();
 
         const { boneMap, currentPoseRotations, model } = sceneStateRef.current;
@@ -1319,6 +1452,20 @@ export default function PoseEditor() {
         }
     }, [selectedBone]);
 
+    undoHandlerRef.current = handleUndo;
+    redoHandlerRef.current = handleRedo;
+
+    useEffect(() => {
+        const handler = (e) => {
+            const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? e.metaKey : e.ctrlKey;
+            if (!mod) return;
+            if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); undoHandlerRef.current?.(); }
+            if (e.key === 'z' && e.shiftKey) { e.preventDefault(); redoHandlerRef.current?.(); }
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, []);
+
     return (
         <div className="pose-editor-studio">
             <div className="studio-topbar">
@@ -1338,6 +1485,11 @@ export default function PoseEditor() {
                 <div className="studio-spacer" />
 
                 <div className="topbar-actions">
+                    <div className="history-controls">
+                        <button className="topbar-btn icon-btn" disabled={!canUndo} onClick={handleUndo} title="Undo (⌘Z)">↩</button>
+                        <button className="topbar-btn icon-btn" disabled={!canRedo} onClick={handleRedo} title="Redo (⌘⇧Z)">↪</button>
+                    </div>
+
                     <div className="panel-toggles">
                         <button className={`topbar-btn ${showImagePanel ? 'active' : ''}`} onClick={() => setShowImagePanel((value) => !value)}>
                             Image
@@ -1511,6 +1663,9 @@ export default function PoseEditor() {
                             </div>
 
                             <div className="panel-actions">
+                                <button className="panel-action-btn" disabled={!isModelReady} onClick={mirrorPose}>
+                                    ↔ Mirror L → R
+                                </button>
                                 <button className="panel-action-btn danger" onClick={handleResetAll}>
                                     Reset Full Pose
                                 </button>
@@ -1522,17 +1677,26 @@ export default function PoseEditor() {
                                     <div id="axisControls">
                                         <div className="axis-row">
                                             <span className="axis-label x">X</span>
-                                            <input type="range" min="-3.14" max="3.14" step="0.01" value={boneRotation.x} onChange={(event) => setBoneRotationValue('x', Number(event.target.value))} />
+                                            <input type="range" min="-3.14" max="3.14" step="0.01" value={boneRotation.x}
+                                                onMouseDown={() => { if (!beforeDragSnapshotRef.current) beforeDragSnapshotRef.current = snapshotPose(); }}
+                                                onChange={(event) => setBoneRotationValue('x', Number(event.target.value))}
+                                                onMouseUp={() => { if (beforeDragSnapshotRef.current) { pushUndo(beforeDragSnapshotRef.current); beforeDragSnapshotRef.current = null; } }} />
                                             <span className="axis-val">{boneRotation.x.toFixed(2)}</span>
                                         </div>
                                         <div className="axis-row">
                                             <span className="axis-label y">Y</span>
-                                            <input type="range" min="-3.14" max="3.14" step="0.01" value={boneRotation.y} onChange={(event) => setBoneRotationValue('y', Number(event.target.value))} />
+                                            <input type="range" min="-3.14" max="3.14" step="0.01" value={boneRotation.y}
+                                                onMouseDown={() => { if (!beforeDragSnapshotRef.current) beforeDragSnapshotRef.current = snapshotPose(); }}
+                                                onChange={(event) => setBoneRotationValue('y', Number(event.target.value))}
+                                                onMouseUp={() => { if (beforeDragSnapshotRef.current) { pushUndo(beforeDragSnapshotRef.current); beforeDragSnapshotRef.current = null; } }} />
                                             <span className="axis-val">{boneRotation.y.toFixed(2)}</span>
                                         </div>
                                         <div className="axis-row">
                                             <span className="axis-label z">Z</span>
-                                            <input type="range" min="-3.14" max="3.14" step="0.01" value={boneRotation.z} onChange={(event) => setBoneRotationValue('z', Number(event.target.value))} />
+                                            <input type="range" min="-3.14" max="3.14" step="0.01" value={boneRotation.z}
+                                                onMouseDown={() => { if (!beforeDragSnapshotRef.current) beforeDragSnapshotRef.current = snapshotPose(); }}
+                                                onChange={(event) => setBoneRotationValue('z', Number(event.target.value))}
+                                                onMouseUp={() => { if (beforeDragSnapshotRef.current) { pushUndo(beforeDragSnapshotRef.current); beforeDragSnapshotRef.current = null; } }} />
                                             <span className="axis-val">{boneRotation.z.toFixed(2)}</span>
                                         </div>
                                         <button
@@ -1557,18 +1721,51 @@ export default function PoseEditor() {
                     ) : activePanel === 'view-presets' ? (
                         <div className="panel-view active">
                             <div className="preset-list">
-                                {POSE_PRESETS.map((preset) => (
-                                    <button
-                                        key={preset.id}
-                                        type="button"
-                                        className="preset-card"
-                                        disabled={!isModelReady}
-                                        onClick={() => applyPosePreset(preset)}
-                                    >
-                                        <span className="preset-name">{preset.name}</span>
-                                        <span className="preset-description">{preset.description}</span>
-                                    </button>
+                                {[...POSE_PRESETS, ...customPresets].map((preset) => (
+                                    <div key={preset.id} className="preset-card-wrapper">
+                                        <button
+                                            type="button"
+                                            className="preset-card"
+                                            disabled={!isModelReady}
+                                            onClick={() => applyPosePreset(preset)}
+                                        >
+                                            <span className="preset-name">{preset.name}</span>
+                                            <span className="preset-description">{preset.description}</span>
+                                        </button>
+                                        {preset.isCustom && (
+                                            <button
+                                                type="button"
+                                                className="preset-delete-btn"
+                                                onClick={() => deleteCustomPreset(preset.id)}
+                                                title="Delete preset"
+                                            >×</button>
+                                        )}
+                                    </div>
                                 ))}
+                            </div>
+                            <div className="preset-save-section">
+                                {isSavingPreset ? (
+                                    <div className="preset-name-input-row">
+                                        <input
+                                            className="preset-name-input"
+                                            type="text"
+                                            placeholder="Pose name…"
+                                            value={savePresetName}
+                                            onChange={(e) => setSavePresetName(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') saveCurrentPreset();
+                                                if (e.key === 'Escape') { setIsSavingPreset(false); setSavePresetName(''); }
+                                            }}
+                                            autoFocus
+                                        />
+                                        <button className="preset-save-confirm" onClick={saveCurrentPreset} disabled={!savePresetName.trim()}>Save</button>
+                                        <button className="preset-save-cancel" onClick={() => { setIsSavingPreset(false); setSavePresetName(''); }}>✕</button>
+                                    </div>
+                                ) : (
+                                    <button className="panel-action-btn" disabled={!isModelReady} onClick={() => setIsSavingPreset(true)}>
+                                        + Save Current Pose
+                                    </button>
+                                )}
                             </div>
                         </div>
                     ) : (
