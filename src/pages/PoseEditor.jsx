@@ -224,6 +224,88 @@ export default function PoseEditor() {
     const [exportModalOpen, setExportModalOpen] = useState(false);
     const [exportText, setExportText] = useState('');
     const [toast, setToast] = useState({ visible: false, icon: '', text: '' });
+    const [leftPanelMode, setLeftPanelMode] = useState('image');
+    const [jsonInputText, setJsonInputText] = useState('');
+    const [jsonError, setJsonError] = useState('');
+
+    const applyJsonPose = (poseData) => {
+        if (!isModelReady) {
+            showToast('⚠️', 'Model not loaded yet');
+            return;
+        }
+
+        applyTPose();
+
+        const { boneMap, currentPoseRotations } = sceneStateRef.current;
+        let appliedCount = 0;
+
+        Object.entries(poseData).forEach(([boneName, boneData]) => {
+            const bone = boneMap[boneName];
+            if (!bone || typeof boneData !== 'object') return;
+
+            const rx = Number(boneData.x) || 0;
+            const ry = Number(boneData.y) || 0;
+            const rz = Number(boneData.z) || 0;
+
+            bone.rotation.set(rx, ry, rz);
+            currentPoseRotations[boneName] = { x: rx, y: ry, z: rz };
+            appliedCount++;
+
+            if (boneData.position) {
+                bone.position.x = Number(boneData.position.x) || bone.position.x;
+                bone.position.y = Number(boneData.position.y) || bone.position.y;
+                bone.position.z = Number(boneData.position.z) || bone.position.z;
+            }
+        });
+
+        sceneStateRef.current.currentMixamoOutput = poseData;
+        setHasPoseData(appliedCount > 0);
+        setBadge({ text: `${appliedCount} bones applied`, tone: 'success' });
+        setStep(3);
+
+        if (sceneStateRef.current.selectedBone) {
+            refreshBoneEditorState(sceneStateRef.current.selectedBone);
+        }
+
+        showToast('✨', `Pose applied — ${appliedCount} bones`);
+    };
+
+    const handleApplyJsonText = () => {
+        if (!jsonInputText.trim()) {
+            setJsonError('Paste JSON pose data first');
+            return;
+        }
+        try {
+            const parsed = JSON.parse(jsonInputText);
+            if (typeof parsed !== 'object' || Array.isArray(parsed)) {
+                throw new Error('Expected an object with bone names as keys');
+            }
+            applyJsonPose(parsed);
+            setJsonError('');
+        } catch (err) {
+            setJsonError(err.message);
+        }
+    };
+
+    const handleJsonFile = (file) => {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target.result;
+            setJsonInputText(text);
+            try {
+                const parsed = JSON.parse(text);
+                if (typeof parsed !== 'object' || Array.isArray(parsed)) {
+                    throw new Error('Expected an object with bone names as keys');
+                }
+                applyJsonPose(parsed);
+                setJsonError('');
+            } catch (err) {
+                setJsonError(err.message);
+            }
+        };
+        reader.readAsText(file);
+    };
 
     const handleResetAll = () => {
         if (!sceneStateRef.current.boneMap) return;
@@ -1112,56 +1194,90 @@ export default function PoseEditor() {
             <div className="studio-main">
                 <aside className={`image-panel ${showImagePanel ? '' : 'hidden'}`}>
                     <div className="panel-header">
-                        <span className="panel-title">Source Image</span>
+                        <span className="panel-title">{leftPanelMode === 'image' ? 'Source Image' : 'Paste JSON'}</span>
                         <span className={`panel-badge ${badge.tone}`}>{badge.text}</span>
                     </div>
 
-                    <label className={`image-drop ${imageSrc ? 'has-image' : ''}`}>
-                        <input
-                            ref={imageInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={(event) => handleImageFile(event.target.files?.[0])}
-                        />
-
-                        {!imageSrc && (
-                            <div className="drop-placeholder">
-                                <div className="drop-icon">🖼️</div>
-                                <div className="drop-title">Drop your image here</div>
-                            </div>
-                        )}
-
-                        <div className={`image-preview ${imageSrc ? 'visible' : ''}`}>
-                            {imageSrc && (
-                                <>
-                                    <img
-                                        ref={previewImgRef}
-                                        src={imageSrc}
-                                        alt="Uploaded image"
-                                        onLoad={() => setImageReady(true)}
-                                    />
-                                    <canvas ref={overlayCanvasRef} />
-                                </>
-                            )}
-                        </div>
-
-                        <div className="landmark-stats" style={{ display: imageStats ? 'block' : 'none' }}>
-                            {imageStats}
-                        </div>
-                    </label>
-
-                    <div className="image-actions">
-                        <button
-                            className="action-btn reset-btn"
-                            onClick={() => window.location.reload()}
-                        >
-                            ↻ Reset
-                        </button>
-
-                        <button className="action-btn extract" disabled={!imageReady || !isModelReady} onClick={handleExtractAndApply}>
-                            ✨ Extract & Apply Pose
-                        </button>
+                    <div className="segment-control" style={{ margin: '12px 20px 0' }}>
+                        <button className={`segment-btn ${leftPanelMode === 'image' ? 'active' : ''}`} onClick={() => setLeftPanelMode('image')}>Image</button>
+                        <button className={`segment-btn ${leftPanelMode === 'json' ? 'active' : ''}`} onClick={() => setLeftPanelMode('json')}>JSON</button>
                     </div>
+
+                    {leftPanelMode === 'image' ? (
+                        <>
+                            <label className={`image-drop ${imageSrc ? 'has-image' : ''}`}>
+                                <input
+                                    ref={imageInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(event) => handleImageFile(event.target.files?.[0])}
+                                />
+
+                                {!imageSrc && (
+                                    <div className="drop-placeholder">
+                                        <div className="drop-icon">🖼️</div>
+                                        <div className="drop-title">Drop your image here</div>
+                                    </div>
+                                )}
+
+                                <div className={`image-preview ${imageSrc ? 'visible' : ''}`}>
+                                    {imageSrc && (
+                                        <>
+                                            <img
+                                                ref={previewImgRef}
+                                                src={imageSrc}
+                                                alt="Uploaded image"
+                                                onLoad={() => setImageReady(true)}
+                                            />
+                                            <canvas ref={overlayCanvasRef} />
+                                        </>
+                                    )}
+                                </div>
+
+                                <div className="landmark-stats" style={{ display: imageStats ? 'block' : 'none' }}>
+                                    {imageStats}
+                                </div>
+                            </label>
+
+                            <div className="image-actions">
+                                <button className="action-btn reset-btn" onClick={() => window.location.reload()}>
+                                    ↻ Reset
+                                </button>
+                                <button className="action-btn extract" disabled={!imageReady || !isModelReady} onClick={handleExtractAndApply}>
+                                    ✨ Extract & Apply Pose
+                                </button>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="json-paste-area">
+                                <textarea
+                                    className="json-textarea"
+                                    placeholder={'Paste Mixamo-compatible JSON here…\n\nExample:\n{\n  "mixamorig_Hips": { "x": 0, "y": 0, "z": 0 },\n  "mixamorig_Spine": { "x": 0.1, "y": 0, "z": 0 }\n}'}
+                                    value={jsonInputText}
+                                    onChange={(e) => { setJsonInputText(e.target.value); setJsonError(''); }}
+                                    spellCheck={false}
+                                />
+                                {jsonError && <div className="json-error">{jsonError}</div>}
+                                <label className="json-file-btn">
+                                    <input type="file" accept=".json,application/json" onChange={(e) => handleJsonFile(e.target.files?.[0])} />
+                                    Browse JSON file…
+                                </label>
+                            </div>
+
+                            <div className="image-actions">
+                                <button
+                                    className="action-btn reset-btn"
+                                    onClick={() => { setJsonInputText(''); setJsonError(''); setBadge({ text: 'Waiting', tone: 'info' }); }}
+                                >
+                                    ↻ Clear
+                                </button>
+                                <button className="action-btn extract" disabled={!jsonInputText.trim() || !isModelReady} onClick={handleApplyJsonText}>
+                                    ✨ Apply Pose
+                                </button>
+                            </div>
+                        </>
+                    )}
                 </aside>
 
                 <section className="viewport-shell">

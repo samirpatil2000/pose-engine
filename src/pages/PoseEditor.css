@@ -884,6 +884,86 @@
   opacity: 1;
 }
 
+/* ── JSON Paste Mode ── */
+.json-paste-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px 8px;
+  gap: 10px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.json-textarea {
+  flex: 1;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.3);
+  color: #5ac8fa;
+  font-family: 'SF Mono', ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  resize: none;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  min-height: 0;
+}
+
+.json-textarea:focus {
+  border-color: #0a84ff;
+  box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.15);
+}
+
+.json-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+  font-family: 'SF Mono', ui-monospace, monospace;
+}
+
+.json-error {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(255, 69, 58, 0.1);
+  border: 1px solid rgba(255, 69, 58, 0.2);
+  color: #ff453a;
+  font-size: 11px;
+  font-family: 'SF Mono', ui-monospace, monospace;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.json-file-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.json-file-btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
+
+.json-file-btn input[type='file'] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+}
+
 /* ── Responsive ── */
 @media (max-width: 900px) {
   .step-breadcrumbs {
