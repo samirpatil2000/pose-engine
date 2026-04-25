@@ -58,6 +58,45 @@ const JOINT_LIMITS = {
     mixamorig_RightFoot: { x: [-0.2, 1.5], y: [-0.5, 0.5], z: [-0.3, 0.3] },
 };
 
+const POSE_PRESETS = [
+    {
+        id: 't-pose',
+        name: 'T Pose',
+        description: 'Straight neutral stance with arms extended.',
+        rotations: {},
+    },
+    {
+        id: 'a-pose',
+        name: 'A Pose',
+        description: 'Relaxed neutral stance with arms lowered.',
+        rotations: {
+            mixamorig_LeftArm: { z: 0.95 },
+            mixamorig_RightArm: { z: -0.95 },
+            mixamorig_LeftForeArm: { y: -0.18 },
+            mixamorig_RightForeArm: { y: 0.18 },
+        },
+    },
+    {
+        id: 'sitting-pose',
+        name: 'Sitting Pose',
+        description: 'Seated lower body with relaxed arms.',
+        rotations: {
+            mixamorig_Hips: { x: -0.18 },
+            mixamorig_Spine: { x: 0.12 },
+            mixamorig_LeftArm: { z: 0.8 },
+            mixamorig_RightArm: { z: -0.8 },
+            mixamorig_LeftForeArm: { y: -0.55 },
+            mixamorig_RightForeArm: { y: 0.55 },
+            mixamorig_LeftUpLeg: { x: -1.35 },
+            mixamorig_RightUpLeg: { x: -1.35 },
+            mixamorig_LeftLeg: { x: -1.45 },
+            mixamorig_RightLeg: { x: -1.45 },
+            mixamorig_LeftFoot: { x: 0.35 },
+            mixamorig_RightFoot: { x: 0.35 },
+        },
+    },
+];
+
 function mp(landmark) {
     return new THREE.Vector3(landmark.x, -landmark.y, -landmark.z);
 }
@@ -182,6 +221,7 @@ export default function PoseEditor() {
         model: null,
         modelContainer: null,
         boneMap: {},
+        baseBonePositions: {},
         currentPoseRotations: {},
         currentMixamoOutput: null,
         tPoseData: {},
@@ -203,7 +243,7 @@ export default function PoseEditor() {
     const [step, setStep] = useState(1);
     const [badge, setBadge] = useState({ text: 'Waiting', tone: 'info' });
     const [showImagePanel, setShowImagePanel] = useState(true);
-    const [showBonePanel, setShowBonePanel] = useState(false);
+    const [showBonePanel, setShowBonePanel] = useState(true);
     const [showAllPoints, setShowAllPoints] = useState(false);
     const [activePanel, setActivePanel] = useState('view-bones');
     const [imageReady, setImageReady] = useState(false);
@@ -310,6 +350,9 @@ export default function PoseEditor() {
     const handleResetAll = () => {
         if (!sceneStateRef.current.boneMap) return;
         applyTPose();
+        sceneStateRef.current.currentMixamoOutput = { ...sceneStateRef.current.tPoseData };
+        setHasPoseData(false);
+        setBadge({ text: 'T-pose reset', tone: 'info' });
         if (selectedBone) {
             refreshBoneEditorState(selectedBone);
         }
@@ -408,11 +451,27 @@ export default function PoseEditor() {
         }
     };
 
+    const buildCurrentPoseOutput = () => {
+        const output = {};
+        Object.entries(sceneStateRef.current.currentPoseRotations).forEach(([name, rotation]) => {
+            output[name] = {
+                x: Number(rotation.x.toFixed(4)),
+                y: Number(rotation.y.toFixed(4)),
+                z: Number(rotation.z.toFixed(4)),
+            };
+        });
+        return output;
+    };
+
     const applyTPose = () => {
-        const { boneMap, tPoseData, currentPoseRotations, model } = sceneStateRef.current;
+        const { boneMap, tPoseData, baseBonePositions, currentPoseRotations, model } = sceneStateRef.current;
         Object.keys(boneMap).forEach((name) => {
             boneMap[name].rotation.set(0, 0, 0);
             currentPoseRotations[name] = { x: 0, y: 0, z: 0 };
+
+            if (baseBonePositions[name]) {
+                boneMap[name].position.copy(baseBonePositions[name]);
+            }
         });
 
         Object.entries(tPoseData).forEach(([name, rotation]) => {
@@ -429,6 +488,47 @@ export default function PoseEditor() {
         if (model) {
             model.updateMatrixWorld(true);
         }
+    };
+
+    const applyPosePreset = (preset) => {
+        if (!isModelReady) {
+            showToast('⚠️', 'Model not loaded yet');
+            return;
+        }
+
+        applyTPose();
+
+        const { boneMap, currentPoseRotations, model } = sceneStateRef.current;
+        Object.entries(preset.rotations).forEach(([boneName, override]) => {
+            const bone = boneMap[boneName];
+            if (!bone) return;
+
+            const current = currentPoseRotations[boneName] || {
+                x: bone.rotation.x,
+                y: bone.rotation.y,
+                z: bone.rotation.z,
+            };
+            const next = {
+                x: override.x ?? current.x,
+                y: override.y ?? current.y,
+                z: override.z ?? current.z,
+            };
+
+            bone.rotation.set(next.x, next.y, next.z);
+            currentPoseRotations[boneName] = next;
+        });
+
+        model?.updateMatrixWorld(true);
+        sceneStateRef.current.currentMixamoOutput = buildCurrentPoseOutput();
+        setHasPoseData(true);
+        setBadge({ text: preset.name, tone: 'success' });
+        setStep(3);
+
+        if (sceneStateRef.current.selectedBone) {
+            refreshBoneEditorState(sceneStateRef.current.selectedBone);
+        }
+
+        showToast('✨', `${preset.name} applied`);
     };
 
     const createBoneIndicators = () => {
@@ -568,10 +668,12 @@ export default function PoseEditor() {
                     if (sceneStateRef.current.updateCamera) sceneStateRef.current.updateCamera();
 
                     sceneStateRef.current.boneMap = {};
+                    sceneStateRef.current.baseBonePositions = {};
                     sceneStateRef.current.currentPoseRotations = {};
                     model.traverse((object) => {
                         if (object.isBone) {
                             sceneStateRef.current.boneMap[object.name] = object;
+                            sceneStateRef.current.baseBonePositions[object.name] = object.position.clone();
                             sceneStateRef.current.currentPoseRotations[object.name] = {
                                 x: object.rotation.x,
                                 y: object.rotation.y,
@@ -1302,6 +1404,7 @@ export default function PoseEditor() {
                 <aside className={`bone-panel ${showBonePanel ? '' : 'hidden'}`}>
                     <div className="segment-control">
                         <button className={`segment-btn ${activePanel === 'view-bones' ? 'active' : ''}`} onClick={() => setActivePanel('view-bones')}>Bones</button>
+                        <button className={`segment-btn ${activePanel === 'view-presets' ? 'active' : ''}`} onClick={() => setActivePanel('view-presets')}>Presets</button>
                         <button className={`segment-btn ${activePanel === 'view-model' ? 'active' : ''}`} onClick={() => setActivePanel('view-model')}>Model</button>
                     </div>
 
@@ -1383,6 +1486,23 @@ export default function PoseEditor() {
                                 ) : null}
                             </div>
                         </div>
+                    ) : activePanel === 'view-presets' ? (
+                        <div className="panel-view active">
+                            <div className="preset-list">
+                                {POSE_PRESETS.map((preset) => (
+                                    <button
+                                        key={preset.id}
+                                        type="button"
+                                        className="preset-card"
+                                        disabled={!isModelReady}
+                                        onClick={() => applyPosePreset(preset)}
+                                    >
+                                        <span className="preset-name">{preset.name}</span>
+                                        <span className="preset-description">{preset.description}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     ) : (
                         <div className="panel-view active">
                             <div id="boneEditor" style={{ borderTop: 'none', paddingTop: 4 }}>
@@ -1433,8 +1553,14 @@ export default function PoseEditor() {
                                 id="modalCopyBtn"
                                 type="button"
                                 onClick={() => {
+                                    if (!navigator.clipboard) {
+                                        showToast('⚠️', 'Clipboard API not available');
+                                        return;
+                                    }
                                     navigator.clipboard.writeText(exportText).then(() => {
                                         showToast('📋', 'Copied to clipboard');
+                                    }).catch(() => {
+                                        showToast('⚠️', 'Failed to copy');
                                     });
                                 }}
                             >
