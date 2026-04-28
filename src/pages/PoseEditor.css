@@ -543,9 +543,62 @@
 }
 
 .panel-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   padding: 16px 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.02);
+}
+
+.mirror-control {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.mirror-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.mirror-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  transform: scale(1.02);
+}
+
+.mirror-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.mirror-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.mirror-divider {
+  width: 1px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
 }
 
 .panel-action-btn {
@@ -557,6 +610,11 @@
   cursor: pointer;
   border: 1px solid transparent;
   transition: all 0.2s ease;
+}
+
+.panel-action-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .panel-action-btn.danger {

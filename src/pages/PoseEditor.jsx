@@ -423,22 +423,23 @@ export default function PoseEditor() {
         showToast('↪', 'Redo');
     };
 
-    const mirrorPose = () => {
+    const mirrorPose = (direction = 'ltr') => {
         if (!isModelReady) return;
         pushUndo(snapshotPose());
         const { boneMap, currentPoseRotations } = sceneStateRef.current;
         MIRROR_PAIRS.forEach(([leftBone, rightBone]) => {
-            const l = currentPoseRotations[leftBone] || { x: 0, y: 0, z: 0 };
-            const mirrored = { x: l.x, y: -l.y, z: -l.z };
-            if (boneMap[rightBone]) {
-                boneMap[rightBone].rotation.set(mirrored.x, mirrored.y, mirrored.z);
-                currentPoseRotations[rightBone] = mirrored;
+            const [src, dst] = direction === 'ltr' ? [leftBone, rightBone] : [rightBone, leftBone];
+            const rot = currentPoseRotations[src] || { x: 0, y: 0, z: 0 };
+            const mirrored = { x: rot.x, y: -rot.y, z: -rot.z };
+            if (boneMap[dst]) {
+                boneMap[dst].rotation.set(mirrored.x, mirrored.y, mirrored.z);
+                currentPoseRotations[dst] = mirrored;
             }
         });
         sceneStateRef.current.model?.updateMatrixWorld(true);
         sceneStateRef.current.currentMixamoOutput = buildCurrentPoseOutput();
         if (sceneStateRef.current.selectedBone) refreshBoneEditorState(sceneStateRef.current.selectedBone);
-        showToast('↔', 'Mirrored L → R');
+        showToast('↔', direction === 'ltr' ? 'Mirrored L → R' : 'Mirrored R → L');
     };
 
     const saveCurrentPreset = () => {
@@ -1663,9 +1664,17 @@ export default function PoseEditor() {
                             </div>
 
                             <div className="panel-actions">
-                                <button className="panel-action-btn" disabled={!isModelReady} onClick={mirrorPose}>
-                                    ↔ Mirror L → R
-                                </button>
+                                <div className="mirror-control">
+                                    <button className="mirror-btn" disabled={!isModelReady} onClick={() => mirrorPose('rtl')} title="Copy right side to left">
+                                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7 2L3 6L7 10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M9 6H3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
+                                        R to L
+                                    </button>
+                                    <div className="mirror-divider" />
+                                    <button className="mirror-btn" disabled={!isModelReady} onClick={() => mirrorPose('ltr')} title="Copy left side to right">
+                                        L to R
+                                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M5 2L9 6L5 10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 6H9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
+                                    </button>
+                                </div>
                                 <button className="panel-action-btn danger" onClick={handleResetAll}>
                                     Reset Full Pose
                                 </button>
