@@ -9,8 +9,28 @@
     "y": 0,
     "z": 0
   },
+  "mixamorig_Spine1": {
+    "x": 0,
+    "y": 0,
+    "z": 0
+  },
   "mixamorig_Spine2": {
     "x": -0.08,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_Neck": {
+    "x": 0,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_Head": {
+    "x": 0,
+    "y": 0,
+    "z": 0
+  },
+  "mixamorig_HeadTop_End": {
+    "x": 0,
     "y": 0,
     "z": 0
   },
@@ -20,13 +40,18 @@
     "z": 1.7782
   },
   "mixamorig_RightArm": {
-    "x": -0.14,
-    "y": -0.8,
+    "x": 0.12,
+    "y": -1.42,
     "z": -1.4
   },
   "mixamorig_RightForeArm": {
+    "x": -0.67,
+    "y": 1.14,
+    "z": -0.82
+  },
+  "mixamorig_RightHand": {
     "x": 0,
-    "y": 0.6,
+    "y": 0,
     "z": 0
   },
   "mixamorig_RightHandThumb1": {
@@ -57,12 +82,12 @@
   "mixamorig_RightHandIndex2": {
     "x": 0.22,
     "y": 0,
-    "z": 0
+    "z": 0.0005
   },
   "mixamorig_RightHandIndex3": {
     "x": 0.15,
     "y": 0,
-    "z": 0
+    "z": -0.0002
   },
   "mixamorig_RightHandIndex4": {
     "x": 0,
@@ -77,12 +102,12 @@
   "mixamorig_RightHandMiddle2": {
     "x": 0.22,
     "y": 0,
-    "z": 0
+    "z": 0.0017
   },
   "mixamorig_RightHandMiddle3": {
     "x": 0.15,
     "y": 0,
-    "z": 0
+    "z": -0.0006
   },
   "mixamorig_RightHandMiddle4": {
     "x": 0,
@@ -92,17 +117,17 @@
   "mixamorig_RightHandRing1": {
     "x": 0.16,
     "y": 0,
-    "z": 0
+    "z": 0.0003
   },
   "mixamorig_RightHandRing2": {
     "x": 0.2,
     "y": 0,
-    "z": 0
+    "z": -0.0004
   },
   "mixamorig_RightHandRing3": {
     "x": 0.14,
     "y": 0,
-    "z": 0
+    "z": -0.0002
   },
   "mixamorig_RightHandRing4": {
     "x": 0,
@@ -117,12 +142,12 @@
   "mixamorig_RightHandPinky2": {
     "x": 0.18,
     "y": 0,
-    "z": 0
+    "z": 0.0017
   },
   "mixamorig_RightHandPinky3": {
     "x": 0.12,
     "y": 0,
-    "z": 0
+    "z": -0.001
   },
   "mixamorig_RightHandPinky4": {
     "x": 0,
@@ -135,29 +160,34 @@
     "z": -1.7782
   },
   "mixamorig_LeftArm": {
-    "x": -0.05,
-    "y": 0.8,
+    "x": 0.12,
+    "y": 1.42,
     "z": 1.4
   },
   "mixamorig_LeftForeArm": {
+    "x": -0.67,
+    "y": -1.14,
+    "z": 0.82
+  },
+  "mixamorig_LeftHand": {
     "x": 0,
-    "y": -0.6,
+    "y": 0,
     "z": 0
   },
   "mixamorig_LeftHandThumb1": {
-    "x": 0.5269,
+    "x": 0.5274,
     "y": 0,
-    "z": 0.4754
+    "z": 0.4773
   },
   "mixamorig_LeftHandThumb2": {
-    "x": -0.0041,
-    "y": 0.0021,
-    "z": -0.0164
+    "x": -0.0046,
+    "y": 0.0024,
+    "z": -0.0186
   },
   "mixamorig_LeftHandThumb3": {
-    "x": -0.0031,
-    "y": 0.0015,
-    "z": -0.0121
+    "x": -0.0033,
+    "y": 0.0016,
+    "z": -0.0138
   },
   "mixamorig_LeftHandThumb4": {
     "x": 0,
@@ -172,11 +202,16 @@
   "mixamorig_LeftHandIndex2": {
     "x": 0.22,
     "y": 0,
-    "z": 0
+    "z": -0.0005
   },
   "mixamorig_LeftHandIndex3": {
     "x": 0.15,
     "y": 0,
+    "z": 0.0002
+  },
+  "mixamorig_LeftHandIndex4": {
+    "x": 0,
+    "y": -0.0008,
     "z": 0
   },
   "mixamorig_LeftHandMiddle1": {
@@ -187,12 +222,12 @@
   "mixamorig_LeftHandMiddle2": {
     "x": 0.22,
     "y": 0,
-    "z": 0
+    "z": -0.0017
   },
   "mixamorig_LeftHandMiddle3": {
     "x": 0.15,
     "y": 0,
-    "z": 0
+    "z": 0.0006
   },
   "mixamorig_LeftHandMiddle4": {
     "x": 0,
@@ -202,32 +237,37 @@
   "mixamorig_LeftHandRing1": {
     "x": 0.16,
     "y": 0,
-    "z": 0
+    "z": -0.0003
   },
   "mixamorig_LeftHandRing2": {
     "x": 0.2,
     "y": 0,
-    "z": 0
+    "z": 0.0004
   },
   "mixamorig_LeftHandRing3": {
     "x": 0.14,
     "y": 0,
+    "z": 0.0002
+  },
+  "mixamorig_LeftHandRing4": {
+    "x": 0,
+    "y": 0.001,
     "z": 0
   },
   "mixamorig_LeftHandPinky1": {
     "x": 0.15,
     "y": 0,
-    "z": 0.004
+    "z": -0.01
   },
   "mixamorig_LeftHandPinky2": {
     "x": 0.18,
     "y": 0,
-    "z": 0
+    "z": -0.0017
   },
   "mixamorig_LeftHandPinky3": {
     "x": 0.12,
     "y": 0,
-    "z": 0
+    "z": 0.001
   },
   "mixamorig_LeftHandPinky4": {
     "x": 0,
@@ -245,7 +285,7 @@
     "z": 0
   },
   "mixamorig_RightFoot": {
-    "x": 1,
+    "x": 0.91,
     "y": 0,
     "z": 0
   },
@@ -262,7 +302,7 @@
   "mixamorig_LeftUpLeg": {
     "x": -1.65,
     "y": -0.05,
-    "z": 3.1416
+    "z": -3.1416
   },
   "mixamorig_LeftLeg": {
     "x": -1.5,
@@ -270,7 +310,7 @@
     "z": 0
   },
   "mixamorig_LeftFoot": {
-    "x": 0.97,
+    "x": 0.91,
     "y": 0,
     "z": 0
   },
