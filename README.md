@@ -9,6 +9,10 @@ A premium suite of tools for creating, extracting, and exploring 3D poses and 36
 ### 🎯 **Pose Editor**
 Create and refine 3D character poses with real-time preview and precise bone control. Adjust joint rotations, preview your changes instantly, and export poses in JSON format.
 
+#### Screenshots 
+<img width="1246" height="812" alt="image-0001" src="https://github.com/user-attachments/assets/5b2cb746-592b-4910-be73-ba06d9a740ed" />
+
+
 ### 📸 **Pose Extractor**
 Extract 3D skeletal poses from images, videos, or live webcam input using advanced computer vision. Supports batch processing of video frames and real-time pose detection.
 
@@ -66,34 +70,6 @@ Poses can be exported in multiple formats:
 - **App Format** — Optimized 18-joint skeleton
 - **Raw MediaPipe** — Full 33-point landmark data
 - **JSON** — Standard structured format for integration
-
-## Architecture
-
-```
-src/
-├── pages/
-│   ├── Home.jsx           # Landing page with feature tiles
-│   ├── PoseEditor.jsx     # 3D pose manipulation interface
-│   ├── PoseExtractor.jsx  # Vision-based pose detection
-│   └── Viewer360.jsx      # Panoramic image viewer
-├── components/
-│   ├── TileCard.jsx       # Reusable feature tile component
-│   └── Toast.jsx          # Notification system
-├── hooks/
-│   ├── useModelPreview.js # 3D scene management
-│   ├── usePoseEditor.js   # Pose editing logic
-│   └── usePoseExtractor.js# Pose detection pipeline
-└── utils/
-    ├── boneMappings.js    # Skeleton bone configuration
-    └── poseConfig.js      # Shared pose utilities
-```
-
-## Browser Support
-
-- Chrome 90+
-- Firefox 88+
-- Safari 14+
-- Edge 90+
 
 WebGL 2.0 support required for 3D rendering.
 
