@@ -12,6 +12,9 @@ Create and refine 3D character poses with real-time preview and precise bone con
 #### Screenshots 
 <img width="1246" height="812" alt="image-0001" src="https://github.com/user-attachments/assets/5b2cb746-592b-4910-be73-ba06d9a740ed" />
 
+<img width="1244" height="755" alt="image" src="https://github.com/user-attachments/assets/dbda5f8e-b3d5-49e0-a598-5c243aa8e4a0" />
+
+
 
 ### 📸 **Pose Extractor**
 Extract 3D skeletal poses from images, videos, or live webcam input using advanced computer vision. Supports batch processing of video frames and real-time pose detection.
