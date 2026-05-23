@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import PoseEditor from './pages/PoseEditor';
 import PoseExtractor from './pages/PoseExtractor';
 import Viewer360 from './pages/Viewer360';
+import GlbStudio from './pages/GlbStudio';
 
 function TabBar() {
   return (
@@ -29,6 +30,12 @@ function TabBar() {
         Pose Extractor
       </NavLink>
       <NavLink 
+        to="/glb-studio" 
+        className={({ isActive }) => isActive ? "active" : ""}
+      >
+        GLB Studio
+      </NavLink>
+      <NavLink 
         to="/360" 
         className={({ isActive }) => isActive ? "active" : ""}
       >
@@ -49,6 +56,7 @@ function AppRoutes() {
         <Route path="/" element={<Home />} />
         <Route path="/editor" element={<PoseEditor />} />
         <Route path="/extract" element={<PoseExtractor />} />
+        <Route path="/glb-studio" element={<GlbStudio />} />
         <Route path="/360" element={<Viewer360 />} />
       </Routes>
     </>
