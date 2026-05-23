@@ -14,6 +14,7 @@ export default function GlbStudio() {
   const navigate = useNavigate();
   const viewportRef = useRef(null);
   const fileInputRef = useRef(null);
+  const loadIdRef = useRef(0);
   
   // Three.js instances ref
   const stateRef = useRef({
@@ -233,6 +234,19 @@ export default function GlbStudio() {
         container.removeChild(renderer.domElement);
       }
       renderer.dispose();
+
+      // Reset state references to avoid memory leaks/stale additions
+      if (stateRef.current) {
+        stateRef.current.scene = null;
+        stateRef.current.camera = null;
+        stateRef.current.renderer = null;
+        stateRef.current.controls = null;
+        stateRef.current.modelContainer = null;
+        stateRef.current.boneIndicator = null;
+        stateRef.current.skeletonHelper = null;
+        stateRef.current.currentModel = null;
+        stateRef.current.mixer = null;
+      }
     };
   }, []);
 
@@ -261,6 +275,8 @@ export default function GlbStudio() {
     stateRef.current.isPlaying = false;
     setAnimProgress(0);
 
+    const loadId = ++loadIdRef.current;
+
     // Reset transform inputs
     setModelPos({ x: 0, y: 0, z: 0 });
     setModelRot({ x: 0, y: 0, z: 0 });
@@ -277,7 +293,7 @@ export default function GlbStudio() {
       state.modelContainer.scale.set(1, 1, 1);
     }
     if (state.skeletonHelper) {
-      state.scene.remove(state.skeletonHelper);
+      if (state.scene) state.scene.remove(state.skeletonHelper);
       state.skeletonHelper = null;
     }
     state.mixer = null;
@@ -291,11 +307,19 @@ export default function GlbStudio() {
       const gltf = await new Promise((resolve, reject) => {
         loader.load(
           modelItem.path,
-          (gltf) => resolve(gltf),
+          (gltf) => {
+            if (loadId !== loadIdRef.current) {
+              reject(new Error('Stale load'));
+              return;
+            }
+            resolve(gltf);
+          },
           undefined,
           (err) => reject(err)
         );
       });
+
+      if (loadId !== loadIdRef.current) return;
 
       const modelScene = gltf.scene;
       state.currentModel = modelScene;
@@ -367,10 +391,14 @@ export default function GlbStudio() {
 
       showToast(`Successfully loaded ${modelItem.name}`);
     } catch (err) {
-      console.error('Error loading model:', err);
-      showToast('Error loading 3D model.');
+      if (err.message !== 'Stale load') {
+        console.error('Error loading model:', err);
+        showToast('Error loading 3D model.');
+      }
     } finally {
-      setIsLoading(false);
+      if (loadId === loadIdRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 

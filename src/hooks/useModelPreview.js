@@ -5,6 +5,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { applyPoseToModel, captureRestPose } from '../utils/boneMappings';
 
 export function useModelPreview(containerRef) {
+  const loadIdRef = useRef(0);
   const stateRef = useRef({
     scene: null,
     camera: null,
@@ -80,8 +81,11 @@ export function useModelPreview(containerRef) {
       boneRefs: {}, model: null, initialized: true,
     };
 
+    const loadId = ++loadIdRef.current;
+
     const loader = new GLTFLoader();
     loader.load('/sample-model.glb', (gltf) => {
+      if (loadId !== loadIdRef.current) return;
       const model = gltf.scene;
       model.position.set(0, 0, 0);
 
@@ -138,6 +142,14 @@ export function useModelPreview(containerRef) {
         container.removeChild(renderer.domElement);
       }
       renderer.dispose();
+
+      // Reset state references to null
+      stateRef.current.scene = null;
+      stateRef.current.camera = null;
+      stateRef.current.renderer = null;
+      stateRef.current.controls = null;
+      stateRef.current.boneRefs = {};
+      stateRef.current.model = null;
     };
   }, [containerReady]);
 

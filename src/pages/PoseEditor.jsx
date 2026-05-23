@@ -314,6 +314,7 @@ export default function PoseEditor() {
     const previewUrlRef = useRef('');
     const poseLandmarkerRef = useRef(null);
     const initializedRef = useRef(false);
+    const loadIdRef = useRef(0);
     const undoStackRef = useRef([]);
     const redoStackRef = useRef([]);
     const beforeDragSnapshotRef = useRef(null);
@@ -796,11 +797,14 @@ export default function PoseEditor() {
 
     const loadModelAndTPose = async () => {
         setLoading('Loading 3D model…');
+        const loadId = ++loadIdRef.current;
         try {
             const [glbRes, tPoseRes] = await Promise.all([
                 fetch('/pose-temp/lady-x-bot.glb'),
                 fetch('/pose-temp/extract-t-pose.json'),
             ]);
+
+            if (loadId !== loadIdRef.current) return;
 
             if (!glbRes.ok || !tPoseRes.ok) {
                 throw new Error('Model assets were not found');
@@ -811,9 +815,15 @@ export default function PoseEditor() {
                 tPoseRes.json(),
             ]);
 
+            if (loadId !== loadIdRef.current) return;
+
             const loader = new GLTFLoader();
             await new Promise((resolve, reject) => {
                 loader.parse(glbBuffer, '', (gltf) => {
+                    if (loadId !== loadIdRef.current) {
+                        reject(new Error('Stale load'));
+                        return;
+                    }
                     const { scene, modelContainer } = sceneStateRef.current;
                     
                     if (sceneStateRef.current.model) {
@@ -864,8 +874,8 @@ export default function PoseEditor() {
                         const fittedCenter = fittedBox.getCenter(new THREE.Vector3());
                         sceneStateRef.current.target.copy(fittedCenter);
 
-                        const viewportW = viewportRef.current?.clientWidth || width;
-                        const viewportH = viewportRef.current?.clientHeight || height;
+                        const viewportW = viewportRef.current?.clientWidth || 800;
+                        const viewportH = viewportRef.current?.clientHeight || 600;
                         const aspect = viewportW / Math.max(1, viewportH);
                         const fov = (camera.fov * Math.PI) / 180;
                         const hFit = fittedSize.y / (2 * Math.tan(fov / 2));
@@ -911,11 +921,14 @@ export default function PoseEditor() {
                 }, undefined, reject);
             });
 
+            if (loadId !== loadIdRef.current) return;
             applyTPose();
             setModelPosition({ x: 0, y: 0, z: 0 });
             clearLoading();
         } catch (error) {
-            showToast('⚠️', 'Could not load the 3D model');
+            if (error.message !== 'Stale load') {
+                showToast('⚠️', 'Could not load the 3D model');
+            }
             clearLoading();
         }
     };
@@ -1430,6 +1443,24 @@ export default function PoseEditor() {
         return () => {
             cleanupScene?.();
             initializedRef.current = false;
+
+            // Reset scene state references to null to prevent leaks/double additions
+            if (sceneStateRef.current) {
+                sceneStateRef.current.scene = null;
+                sceneStateRef.current.camera = null;
+                sceneStateRef.current.renderer = null;
+                sceneStateRef.current.model = null;
+                sceneStateRef.current.modelContainer = null;
+                sceneStateRef.current.boneMap = {};
+                sceneStateRef.current.baseBonePositions = {};
+                sceneStateRef.current.currentPoseRotations = {};
+                sceneStateRef.current.pointsGroup = null;
+                sceneStateRef.current.allBoneIndicators = {};
+                sceneStateRef.current.boneIndicator = null;
+                sceneStateRef.current.boneIndicatorRing = null;
+                sceneStateRef.current.skeletonHelper = null;
+            }
+
             if (previewUrlRef.current) {
                 URL.revokeObjectURL(previewUrlRef.current);
             }
