@@ -40,10 +40,8 @@ export default function GlbStudio() {
 
   // State lists
   const [models, setModels] = useState([
-    { id: 'dancing-sample', name: 'Dancing.glb (Sample)', path: '/Dancing.glb', size: '1.9 MB', isSample: true },
-    { id: 'dancing-complex-sample', name: 'Dancing-complex.glb (Sample)', path: '/Dancing-complex.glb', size: '2.1 MB', isSample: true },
-    { id: 'default-character', name: 'sample-model.glb (Default)', path: '/sample-model.glb', size: '2.2 MB', isSample: true },
-    { id: 'robot-character', name: 'lady-x-bot.glb (Robot)', path: '/pose-temp/lady-x-bot.glb', size: '8.9 MB', isSample: true },
+    { id: 'dancing-sample', name: 'Dancing.glb (Sample)', path: '/motions/Dancing.glb', size: '1.9 MB', isSample: true },
+    { id: 'dancing-complex-sample', name: 'Dancing-complex.glb (Sample)', path: '/motions/Dancing-complex.glb', size: '2.1 MB', isSample: true }
   ]);
   const [selectedModelId, setSelectedModelId] = useState('dancing-sample');
   const [isLoading, setIsLoading] = useState(false);

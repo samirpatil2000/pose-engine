@@ -800,7 +800,7 @@ export default function PoseEditor() {
         const loadId = ++loadIdRef.current;
         try {
             const [glbRes, tPoseRes] = await Promise.all([
-                fetch('/pose-temp/lady-x-bot.glb'),
+                fetch('/models/lady-x-bot.glb'),
                 fetch('/pose-temp/extract-t-pose.json'),
             ]);
 
