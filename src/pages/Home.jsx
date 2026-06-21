@@ -1,5 +1,5 @@
 import React from 'react';
-import { Zap, Image, RotateCcw, Box } from 'lucide-react';
+import { Zap, Image, RotateCcw, Box, Video } from 'lucide-react';
 import TileCard from '../components/TileCard';
 import './Home.css';
 
@@ -22,6 +22,12 @@ export default function Home() {
       title: 'GLB Studio',
       description: 'Upload custom GLB models, preview animations, pose rigs, and export customized GLBs.',
       href: '/glb-studio',
+    },
+    {
+      icon: Video,
+      title: 'Motion Ripper',
+      description: 'Upload a video, track performer motion, and preview it on a mapped character.',
+      href: '/motion-ripper',
     },
     {
       icon: RotateCcw,

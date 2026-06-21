@@ -6,6 +6,7 @@ import PoseEditor from './pages/PoseEditor';
 import PoseExtractor from './pages/PoseExtractor';
 import Viewer360 from './pages/Viewer360';
 import GlbStudio from './pages/GlbStudio';
+import MotionRipper from './pages/MotionRipper';
 
 function TabBar() {
   return (
@@ -35,6 +36,12 @@ function TabBar() {
       >
         GLB Studio
       </NavLink>
+      <NavLink
+        to="/motion-ripper"
+        className={({ isActive }) => isActive ? "active" : ""}
+      >
+        Motion Ripper
+      </NavLink>
       <NavLink 
         to="/360" 
         className={({ isActive }) => isActive ? "active" : ""}
@@ -57,6 +64,7 @@ function AppRoutes() {
         <Route path="/editor" element={<PoseEditor />} />
         <Route path="/extract" element={<PoseExtractor />} />
         <Route path="/glb-studio" element={<GlbStudio />} />
+        <Route path="/motion-ripper" element={<MotionRipper />} />
         <Route path="/360" element={<Viewer360 />} />
       </Routes>
     </>
