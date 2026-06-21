@@ -217,6 +217,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
             ui.recordBtn = document.getElementById('record-btn');
             ui.clearBtn = document.getElementById('clear-btn');
             ui.saveLibraryBtn = document.getElementById('save-library-btn');
+            ui.exportHtmlBtn = document.getElementById('export-html-btn');
             ui.animationName = document.getElementById('animation-name');
             ui.characterColor = document.getElementById('character-color');
             ui.secondCharacterColor = document.getElementById('second-character-color');
@@ -259,6 +260,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
             ui.recordBtn?.addEventListener('click', toggleRecording);
             ui.clearBtn?.addEventListener('click', clearRecording);
             ui.saveLibraryBtn?.addEventListener('click', saveAnimationToLibrary);
+            ui.exportHtmlBtn?.addEventListener('click', exportAnimationAsHtml);
             ui.characterColor.addEventListener('input', () => setCharacterColorByIndex(0, ui.characterColor.value));
             ui.secondCharacterColor?.addEventListener('input', () => setCharacterColorByIndex(1, ui.secondCharacterColor.value));
             ui.multiCharacter?.addEventListener('change', handleMultiCharacterChanged);
@@ -2161,6 +2163,596 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
             URL.revokeObjectURL(url);
         }
 
+        function exportAnimationAsHtml() {
+            try {
+                const asset = createAnimationAsset();
+                const htmlContent = generateStandaloneHtml(asset);
+
+                const blob = new Blob([htmlContent], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                const safeName = asset.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'motion-rip';
+
+                link.href = url;
+                link.download = `${safeName}.html`;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(url);
+
+                setStatus(`Animation "${asset.name}" exported successfully as standalone HTML.`, 'success');
+            } catch (error) {
+                console.error(error);
+                setStatus(error.message || 'Could not export as standalone HTML.', 'error');
+            }
+        }
+
+        function generateStandaloneHtml(asset) {
+            return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Standalone Player - ${asset.name}</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #050816;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #f1f5f9;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        #viewport {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        .hud-panel {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+            padding: 16px 20px;
+            z-index: 10;
+        }
+        
+        .hud-header {
+            top: 24px;
+            left: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            pointer-events: none;
+        }
+        .hud-header h1 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            color: #ffffff;
+        }
+        .hud-header p {
+            margin: 0;
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            color: #06b6d4;
+        }
+
+        .hud-controls {
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-sizing: border-box;
+        }
+
+        .controls-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            width: 100%;
+        }
+
+        .timeline-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .time-display {
+            font-size: 12px;
+            font-variant-numeric: tabular-nums;
+            color: #94a3b8;
+            font-weight: 500;
+            min-width: 70px;
+            text-align: right;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.15);
+            outline: none;
+            cursor: pointer;
+            margin: 0;
+            transition: background 0.2s;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ffffff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.3);
+        }
+
+        .play-btn {
+            background: #ffffff;
+            color: #0f172a;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transition: transform 0.2s, background 0.2s;
+            flex-shrink: 0;
+        }
+        .play-btn:hover {
+            transform: scale(1.08);
+            background: #f1f5f9;
+        }
+        .play-btn:active {
+            transform: scale(0.96);
+        }
+        .play-btn svg {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+        }
+
+        .secondary-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #f1f5f9;
+            height: 32px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 0 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .secondary-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px);
+        }
+        .secondary-btn:active {
+            transform: translateY(0);
+        }
+
+        select {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #f1f5f9;
+            border-radius: 8px;
+            height: 32px;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 0 10px;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        select:hover {
+            background: rgba(15, 23, 42, 0.95);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .flex-spacer {
+            flex-grow: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="hud-panel hud-header">
+        <p>Offline Viewer</p>
+        <h1>${asset.name}</h1>
+    </div>
+
+    <div class="hud-panel hud-controls">
+        <div class="controls-row">
+            <button class="play-btn" id="play-btn" title="Play/Pause">
+                <svg id="play-icon" viewBox="0 0 24 24" style="display:none;"><path d="M8 5v14l11-7z"/></svg>
+                <svg id="pause-icon" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+            </button>
+            
+            <div class="timeline-container">
+                <input type="range" id="scrubber" min="0" max="100" value="0" step="0.1">
+                <span class="time-display" id="time-display">0.0s / 0.0s</span>
+            </div>
+        </div>
+        <div class="controls-row" style="margin-top: 4px;">
+            <select id="speed-select" title="Playback Speed">
+                <option value="0.25">0.25x</option>
+                <option value="0.5">0.5x</option>
+                <option value="1.0" selected>1.0x (Normal)</option>
+                <option value="1.5">1.5x</option>
+                <option value="2.0">2.0x</option>
+            </select>
+
+            <div class="flex-spacer"></div>
+
+            <button class="secondary-btn" id="reset-cam-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path><polyline points="16 16 21 16 21 21"></polyline></svg>
+                Reset Camera
+            </button>
+        </div>
+    </div>
+
+    <canvas id="viewport"></canvas>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    <\/script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        const ANIMATION_DATA = ${JSON.stringify(asset)};
+        const keyframes = ANIMATION_DATA.keyframes || [];
+        const totalDuration = keyframes.length > 0 ? keyframes[keyframes.length - 1].time : 0;
+        const BASE_JOINT_ORDER = [
+            'Hips', 'Spine', 'Head', 'Left_Upper_Arm', 'Left_Lower_Arm',
+            'Right_Upper_Arm', 'Right_Lower_Arm', 'Left_Upper_Leg',
+            'Left_Lower_Leg', 'Right_Upper_Leg', 'Right_Lower_Leg'
+        ];
+
+        let scene, camera, renderer, orbitControls;
+        let previewRoots = [];
+        let currentTime = 0;
+        let isPlaying = true;
+        let playbackSpeed = 1.0;
+        let clock = new THREE.Clock();
+
+        const playBtn = document.getElementById('play-btn');
+        const playIcon = document.getElementById('play-icon');
+        const pauseIcon = document.getElementById('pause-icon');
+        const scrubber = document.getElementById('scrubber');
+        const timeDisplay = document.getElementById('time-display');
+        const speedSelect = document.getElementById('speed-select');
+        const resetCamBtn = document.getElementById('reset-cam-btn');
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050816);
+            scene.fog = new THREE.Fog(0x050816, 10, 26);
+
+            camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 4.8, 10.5);
+
+            renderer = new THREE.WebGLRenderer({
+                canvas: document.getElementById('viewport'),
+                antialias: true,
+                alpha: false
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+            scene.add(ambientLight);
+
+            const keyLight = new THREE.DirectionalLight(0xffffff, 1.4);
+            keyLight.position.set(6, 10, 5);
+            keyLight.castShadow = true;
+            keyLight.shadow.mapSize.width = 2048;
+            keyLight.shadow.mapSize.height = 2048;
+            scene.add(keyLight);
+
+            const rimLight = new THREE.DirectionalLight(0x67e8f9, 0.7);
+            rimLight.position.set(-6, 6, -4);
+            scene.add(rimLight);
+
+            const fillLight = new THREE.PointLight(0x34d399, 0.8, 20);
+            fillLight.position.set(0, 5, 4);
+            scene.add(fillLight);
+
+            const grid = new THREE.GridHelper(30, 30, 0x1e293b, 0x0f172a);
+            scene.add(grid);
+
+            const floor = new THREE.Mesh(
+                new THREE.PlaneGeometry(50, 50),
+                new THREE.MeshStandardMaterial({ color: 0x07111f, roughness: 0.9, metalness: 0.05 })
+            );
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            orbitControls = new OrbitControls(camera, renderer.domElement);
+            orbitControls.enableDamping = true;
+            orbitControls.dampingFactor = 0.08;
+            orbitControls.target.set(0, 2.6, 0);
+            orbitControls.maxPolarAngle = Math.PI / 2 - 0.08;
+
+            const characterCount = ANIMATION_DATA.scene?.characterCount || 1;
+            const characterColors = ANIMATION_DATA.scene?.characterColors || ['#5eead4'];
+            for (let charIndex = 0; charIndex < characterCount; charIndex++) {
+                const colorHex = characterColors[charIndex] || '#5eead4';
+                previewRoots.push(createPreviewCharacter(charIndex, characterCount, colorHex));
+            }
+
+            playBtn.addEventListener('click', togglePlay);
+            scrubber.addEventListener('input', handleScrub);
+            speedSelect.addEventListener('change', (e) => {
+                playbackSpeed = parseFloat(e.target.value);
+            });
+            resetCamBtn.addEventListener('click', resetCamera);
+
+            window.addEventListener('resize', handleResize);
+
+            clock.start();
+            renderer.setAnimationLoop(update);
+        }
+
+        function createPreviewCharacter(characterIndex, characterCount, colorHex) {
+            const color = new THREE.Color(colorHex);
+            const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.42, metalness: 0.08 });
+
+            function caps(r, len, pivotY, name) {
+                const group = new THREE.Group();
+                group.name = name + '_' + characterIndex;
+                const geo = new THREE.CapsuleGeometry(r, len, 4, 10);
+                geo.translate(0, pivotY, 0);
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.castShadow = mesh.receiveShadow = true;
+                group.add(mesh);
+                return group;
+            }
+
+            function cyl(rTop, rBot, h, pivotY, name) {
+                const group = new THREE.Group();
+                group.name = name + '_' + characterIndex;
+                const geo = new THREE.CylinderGeometry(rTop, rBot, h, 10);
+                geo.translate(0, pivotY, 0);
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.castShadow = mesh.receiveShadow = true;
+                group.add(mesh);
+                return group;
+            }
+
+            const UARM_R = 0.13,  UARM_L = 0.52, UARM_H = UARM_L + 2 * UARM_R;
+            const LARM_R = 0.105, LARM_L = 0.48, LARM_H = LARM_L + 2 * LARM_R;
+            const HAND_R = 0.085, HAND_L = 0.06, HAND_H = HAND_L + 2 * HAND_R;
+            const ULEG_R = 0.175, ULEG_L = 0.72, ULEG_H = ULEG_L + 2 * ULEG_R;
+            const LLEG_R = 0.125, LLEG_L = 0.68, LLEG_H = LLEG_L + 2 * LLEG_R;
+            const CHEST_H = 0.85;
+            const NECK_R = 0.10,  NECK_L = 0.13, NECK_H = NECK_L + 2 * NECK_R;
+            const HEAD_R = 0.25,  HEAD_L = 0.18, HEAD_H = HEAD_L + 2 * HEAD_R;
+            const HIP_R  = 0.195, HIP_L  = 0.10, HIP_H  = HIP_L  + 2 * HIP_R;
+
+            const root = caps(HIP_R, HIP_L, 0, 'Hips');
+            
+            const xOffset = characterCount > 1
+                ? (characterIndex - (characterCount - 1) / 2) * 3
+                : 0;
+            root.position.set(xOffset, 2.6, 0);
+
+            const spine = cyl(0.32, 0.20, CHEST_H, CHEST_H / 2, 'Spine');
+            spine.position.set(0, HIP_H * 0.35, 0);
+            root.add(spine);
+
+            const neck = caps(NECK_R, NECK_L, NECK_H / 2, 'Neck');
+            neck.position.set(0, CHEST_H, 0);
+            spine.add(neck);
+
+            const head = caps(HEAD_R, HEAD_L, HEAD_H / 2, 'Head');
+            head.position.set(0, NECK_H, 0);
+            neck.add(head);
+
+            const leftUpperArm = caps(UARM_R, UARM_L, -UARM_H / 2, 'Left_Upper_Arm');
+            leftUpperArm.position.set(0.33, CHEST_H - 0.08, 0);
+            leftUpperArm.rotation.z = Math.PI / 2;
+            spine.add(leftUpperArm);
+
+            const leftLowerArm = caps(LARM_R, LARM_L, -LARM_H / 2, 'Left_Lower_Arm');
+            leftLowerArm.position.set(0, -UARM_H, 0);
+            leftUpperArm.add(leftLowerArm);
+
+            const leftHand = caps(HAND_R, HAND_L, -HAND_H / 2, 'Left_Hand');
+            leftHand.position.set(0, -LARM_H, 0);
+            leftLowerArm.add(leftHand);
+
+            const rightUpperArm = caps(UARM_R, UARM_L, -UARM_H / 2, 'Right_Upper_Arm');
+            rightUpperArm.position.set(-0.33, CHEST_H - 0.08, 0);
+            rightUpperArm.rotation.z = -Math.PI / 2;
+            spine.add(rightUpperArm);
+
+            const rightLowerArm = caps(LARM_R, LARM_L, -LARM_H / 2, 'Right_Lower_Arm');
+            rightLowerArm.position.set(0, -UARM_H, 0);
+            rightUpperArm.add(rightLowerArm);
+
+            const rightHand = caps(HAND_R, HAND_L, -HAND_H / 2, 'Right_Hand');
+            rightHand.position.set(0, -LARM_H, 0);
+            rightLowerArm.add(rightHand);
+
+            const leftUpperLeg = caps(ULEG_R, ULEG_L, -ULEG_H / 2, 'Left_Upper_Leg');
+            leftUpperLeg.position.set(0.185, -HIP_H * 0.32, 0);
+            root.add(leftUpperLeg);
+
+            const leftLowerLeg = caps(LLEG_R, LLEG_L, -LLEG_H / 2, 'Left_Lower_Leg');
+            leftLowerLeg.position.set(0, -ULEG_H, 0);
+            leftUpperLeg.add(leftLowerLeg);
+
+            const leftFoot = caps(0.09, 0.28, -0.09, 'Left_Foot');
+            leftFoot.position.set(0.02, -LLEG_H, 0.05);
+            leftFoot.rotation.x = -Math.PI / 2;
+            leftLowerLeg.add(leftFoot);
+
+            const rightUpperLeg = caps(ULEG_R, ULEG_L, -ULEG_H / 2, 'Right_Upper_Leg');
+            rightUpperLeg.position.set(-0.185, -HIP_H * 0.32, 0);
+            root.add(rightUpperLeg);
+
+            const rightLowerLeg = caps(LLEG_R, LLEG_L, -LLEG_H / 2, 'Right_Lower_Leg');
+            rightLowerLeg.position.set(0, -ULEG_H, 0);
+            rightUpperLeg.add(rightLowerLeg);
+
+            const rightFoot = caps(0.09, 0.28, -0.09, 'Right_Foot');
+            rightFoot.position.set(-0.02, -LLEG_H, 0.05);
+            rightFoot.rotation.x = -Math.PI / 2;
+            rightLowerLeg.add(rightFoot);
+
+            scene.add(root);
+            return root;
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            if (isPlaying) {
+                playIcon.style.display = 'none';
+                pauseIcon.style.display = 'block';
+            } else {
+                playIcon.style.display = 'block';
+                pauseIcon.style.display = 'none';
+            }
+        }
+
+        function handleScrub(e) {
+            const val = parseFloat(e.target.value);
+            currentTime = (val / 100) * totalDuration;
+            updateTimeText();
+            applyKeyframePose(currentTime);
+        }
+
+        function resetCamera() {
+            camera.position.set(0, 4.8, 10.5);
+            orbitControls.target.set(0, 2.6, 0);
+            orbitControls.update();
+        }
+
+        function handleResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function getInterpolatedPose(time) {
+            if (keyframes.length === 0) return null;
+            if (keyframes.length === 1) return keyframes[0].pose;
+
+            if (time <= keyframes[0].time) return keyframes[0].pose;
+            if (time >= keyframes[keyframes.length - 1].time) return keyframes[keyframes.length - 1].pose;
+
+            let i1 = 0;
+            let i2 = 1;
+            for (let i = 0; i < keyframes.length - 1; i++) {
+                if (time >= keyframes[i].time && time <= keyframes[i + 1].time) {
+                    i1 = i;
+                    i2 = i + 1;
+                    break;
+                }
+            }
+
+            const k1 = keyframes[i1];
+            const k2 = keyframes[i2];
+
+            const span = k2.time - k1.time;
+            const alpha = span > 0 ? (time - k1.time) / span : 0;
+
+            const pose = {};
+            Object.keys(k1.pose).forEach(jointName => {
+                const j1 = k1.pose[jointName];
+                const j2 = k2.pose[jointName] || j1;
+
+                const p1 = new THREE.Vector3().fromArray(j1.position);
+                const p2 = new THREE.Vector3().fromArray(j2.position);
+                const pos = p1.lerp(p2, alpha);
+
+                const q1 = new THREE.Quaternion().fromArray(j1.quaternion);
+                const q2 = new THREE.Quaternion().fromArray(j2.quaternion);
+                const quat = q1.slerp(q2, alpha);
+
+                pose[jointName] = { position: pos, quaternion: quat };
+            });
+
+            return pose;
+        }
+
+        function applyKeyframePose(time) {
+            const poseState = getInterpolatedPose(time);
+            if (!poseState) return;
+
+            previewRoots.forEach(root => {
+                root.traverse(object => {
+                    if (!object.isGroup || !object.name || !poseState[object.name]) return;
+                    object.position.copy(poseState[object.name].position);
+                    object.quaternion.copy(poseState[object.name].quaternion);
+                });
+            });
+        }
+
+        function updateTimeText() {
+            timeDisplay.textContent = currentTime.toFixed(1) + 's / ' + totalDuration.toFixed(1) + 's';
+        }
+
+        function update() {
+            const delta = clock.getDelta();
+            if (isPlaying && totalDuration > 0) {
+                currentTime += delta * playbackSpeed;
+                if (currentTime > totalDuration) {
+                    currentTime = 0;
+                }
+                scrubber.value = (currentTime / totalDuration) * 100;
+                updateTimeText();
+                applyKeyframePose(currentTime);
+            }
+            orbitControls.update();
+            renderer.render(scene, camera);
+        }
+
+        init();
+    </script>
+</body>
+</html>`;
+        }
+
         function serializePose(pose) {
             const serialized = {};
 
@@ -2374,6 +2966,10 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
             if (ui.frameCount) ui.frameCount.textContent = String(recordedFrames.length);
             const lastTime = recordedFrames.length > 0 ? recordedFrames[recordedFrames.length - 1].time : 0;
             if (ui.durationValue) ui.durationValue.textContent = `${lastTime.toFixed(1)}s`;
+
+            const disabled = recordedFrames.length === 0;
+            if (ui.saveLibraryBtn) ui.saveLibraryBtn.disabled = disabled;
+            if (ui.exportHtmlBtn) ui.exportHtmlBtn.disabled = disabled;
         }
 
         function setStatus(message, tone = 'info') {
