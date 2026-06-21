@@ -1,36 +1,117 @@
+@import "tailwindcss";
+
 .motion-ripper-page {
   position: fixed;
-  inset: 53px 0 0;
-  overflow: auto;
+  inset: 52px 0 0;
+  overflow: hidden;
   background: #050816;
+  display: flex;
+  flex-direction: column;
 }
 
 .motion-ripper-host {
-  min-height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   background:
-    radial-gradient(circle at top left, rgba(14, 116, 144, 0.28), transparent 38%),
-    radial-gradient(circle at top right, rgba(21, 128, 61, 0.18), transparent 32%),
-    linear-gradient(180deg, #050816 0%, #09111f 50%, #05070d 100%);
+    radial-gradient(circle at top left, rgba(14, 116, 144, 0.22), transparent 40%),
+    radial-gradient(circle at top right, rgba(124, 58, 237, 0.15), transparent 35%),
+    linear-gradient(180deg, #050816 0%, #080f21 50%, #03060c 100%);
 }
 
-.motion-ripper-loading {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
+.motion-ripper-host > .relative {
+  height: 100%;
+  min-height: 0;
+  padding: 24px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.motion-ripper-host .motion-grid {
   display: grid;
-  place-items: center;
-  color: #e2e8f0;
-  background: #050816;
+  grid-template-columns: 22rem minmax(0, 1fr);
+  gap: 24px;
+  height: 100%;
+  min-height: 0;
 }
 
-body.motion-ripper-active {
-  overflow: hidden;
+.motion-ripper-host .grid-2col {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)) !important;
+  gap: 12px !important;
 }
 
+.motion-ripper-host aside.glass-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: 24px;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.motion-ripper-host aside.glass-card h1 {
+  font-size: 22px;
+  line-height: 1.15;
+}
+
+/* Sidebar scroll area styling */
+.motion-ripper-host aside.glass-card .flex-1.overflow-y-auto {
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 6px;
+  box-sizing: border-box;
+}
+
+.motion-ripper-host aside.glass-card .flex-1.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
+}
+
+.motion-ripper-host aside.glass-card .flex-1.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.motion-ripper-host aside.glass-card .flex-1.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 100px;
+}
+
+.motion-ripper-host aside.glass-card .flex-1.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Previews Grid Layout */
+.motion-ripper-host main {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 24px;
+  min-height: 0;
+  height: 100%;
+}
+
+.motion-ripper-host main > section.glass-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: 24px;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.motion-ripper-host main > section.glass-card h2 {
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+/* Stage & Canvas container controls */
 .motion-ripper-host #video-stage {
   position: relative;
-  min-height: 340px;
+  min-height: 0;
   overflow: hidden;
+  flex: 1 1 auto;
+  border-radius: 18px;
 }
 
 .motion-ripper-host #source-video,
@@ -43,9 +124,7 @@ body.motion-ripper-active {
 
 .motion-ripper-host #source-video {
   object-fit: contain;
-  background:
-    radial-gradient(circle at top, rgba(22, 78, 99, 0.32), transparent 48%),
-    linear-gradient(180deg, rgba(10, 16, 30, 0.95), rgba(4, 8, 16, 1));
+  background: #02040a;
 }
 
 .motion-ripper-host #pose-overlay {
@@ -72,14 +151,143 @@ body.motion-ripper-active {
   height: 100%;
 }
 
-.motion-ripper-host .glass-card {
-  background: rgba(7, 12, 23, 0.72);
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  box-shadow: 0 28px 60px rgba(2, 8, 23, 0.42);
-  backdrop-filter: blur(20px);
+.motion-ripper-host #preview-canvas,
+.motion-ripper-host #pose-overlay,
+.motion-ripper-host #source-video {
+  max-width: 100%;
 }
 
-.motion-ripper-host .metric-pill {
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  background: rgba(15, 23, 42, 0.62);
+/* Premium styling overrides */
+.motion-ripper-host .glass-card {
+  background: rgba(7, 12, 23, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.motion-ripper-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  color: #e2e8f0;
+  background: #050816;
+}
+
+body.motion-ripper-active {
+  overflow: hidden;
+}
+
+/* Polished color picker */
+.motion-ripper-host input[type="color"] {
+  -webkit-appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4px;
+  background: rgba(2, 6, 23, 0.7);
+  border-radius: 12px;
+  box-sizing: border-box;
+}
+
+.motion-ripper-host input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.motion-ripper-host input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 8px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Media Queries for Large Viewports */
+@media (min-width: 1536px) {
+  .motion-ripper-host main {
+    grid-template-rows: 1fr;
+    grid-template-columns: 1.08fr 0.92fr;
+  }
+}
+
+/* Media Queries for Tablet/Mobile Viewports */
+@media (max-width: 1200px) {
+  .motion-ripper-page {
+    overflow-y: auto;
+  }
+
+  .motion-ripper-host > .relative {
+    height: auto;
+    min-height: 100%;
+    padding: 16px;
+  }
+
+  .motion-ripper-host .motion-grid {
+    grid-template-columns: 1fr;
+    height: auto;
+    gap: 16px;
+  }
+
+  .motion-ripper-host aside.glass-card {
+    max-height: none;
+    height: auto;
+    border-radius: 18px;
+  }
+
+  .motion-ripper-host aside.glass-card .flex-1.overflow-y-auto {
+    overflow-y: visible;
+    padding-right: 0;
+  }
+
+  .motion-ripper-host main {
+    grid-template-rows: auto auto;
+    grid-template-columns: 1fr;
+    height: auto;
+    gap: 16px;
+  }
+
+  .motion-ripper-host main > section.glass-card {
+    border-radius: 18px;
+  }
+
+  .motion-ripper-host #video-stage {
+    aspect-ratio: 16 / 9;
+    min-height: 360px;
+    height: auto;
+  }
+
+  .motion-ripper-host main > section.glass-card:last-child .min-h-0.flex-1 {
+    aspect-ratio: 16 / 10;
+    min-height: 400px;
+    height: auto;
+  }
+}
+
+@media (max-width: 720px) {
+  .motion-ripper-page {
+    inset: 49px 0 0;
+  }
+
+  .motion-ripper-host > .relative {
+    padding: 10px;
+  }
+
+  .motion-ripper-host .motion-grid {
+    gap: 10px;
+  }
+
+  .motion-ripper-host aside.glass-card,
+  .motion-ripper-host main > section.glass-card {
+    border-radius: 14px;
+    padding: 12px;
+  }
+
+  .motion-ripper-host #video-stage {
+    min-height: 280px;
+  }
+
+  .motion-ripper-host main > section.glass-card:last-child .min-h-0.flex-1 {
+    min-height: 300px;
+  }
 }

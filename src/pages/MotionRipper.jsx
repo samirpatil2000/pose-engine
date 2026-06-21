@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import './MotionRipper.css';
 
 const EXTERNAL_SCRIPTS = [
-  ['motion-ripper-tailwind', 'https://cdn.tailwindcss.com'],
   ['motion-ripper-tfjs-core', 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core'],
   ['motion-ripper-tfjs-converter', 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter'],
   ['motion-ripper-tfjs-backend-webgl', 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl'],
@@ -36,7 +35,6 @@ async function loadExternalScripts() {
 }
 
 export default function MotionRipper() {
-  const mountRef = useRef(null);
   const scriptRef = useRef(null);
   const [status, setStatus] = useState('Loading Motion Ripper...');
 
@@ -46,13 +44,7 @@ export default function MotionRipper() {
     async function mountMotionRipper() {
       try {
         await loadExternalScripts();
-        const response = await fetch('/motion-ripper/markup.html');
-        if (!response.ok) throw new Error('Motion Ripper markup failed to load');
-
-        const markup = await response.text();
-        if (cancelled || !mountRef.current) return;
-
-        mountRef.current.innerHTML = markup;
+        if (cancelled) return;
 
         const script = document.createElement('script');
         script.type = 'module';
@@ -76,7 +68,6 @@ export default function MotionRipper() {
       delete window.__motionRipperCleanup;
       scriptRef.current?.remove();
       scriptRef.current = null;
-      if (mountRef.current) mountRef.current.innerHTML = '';
       document.body.classList.remove('motion-ripper-active');
     };
   }, []);
@@ -85,13 +76,270 @@ export default function MotionRipper() {
     <main className="motion-ripper-page">
       {status && (
         <div className="motion-ripper-loading" role="status">
-          {status}
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-400 border-t-transparent"></div>
+            <p className="text-sm font-medium text-slate-300">{status}</p>
+          </div>
         </div>
       )}
-      <div
-        ref={mountRef}
-        className="motion-ripper-host text-slate-100 antialiased"
-      />
+      <div className="motion-ripper-host text-slate-100 antialiased">
+        <div className="relative min-h-screen p-4 lg:p-6">
+          <div className="motion-grid grid h-[calc(100vh-2rem)] grid-cols-1 gap-4 xl:h-[calc(100vh-3rem)] xl:grid-cols-[22rem,minmax(0,1fr)]">
+            <aside className="glass-card flex min-h-0 flex-col rounded-[1.6rem] p-5">
+              {/* Header */}
+              <div className="mb-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-cyan-300/80">Motion Capture</p>
+                <h1 className="mt-1 text-2xl font-semibold text-white">Motion Ripper</h1>
+              </div>
+
+              {/* Status Banner */}
+              <div className="mb-4 rounded-xl bg-slate-950/50 border border-white/5 p-3">
+                <div id="status-text" className="text-xs text-slate-300 leading-relaxed">
+                  Initializing and warming up AI models...
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+                {/* 1. Capture Source */}
+                <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
+                    1. Capture Source
+                    <span id="video-meta" className="text-[10px] font-semibold text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded-full">No stream</span>
+                  </h2>
+                  <div className="grid-2col">
+                    <button id="upload-video-btn" className="w-full flex items-center justify-center gap-2 rounded-2xl bg-purple-500 hover:bg-purple-400 text-slate-950 px-4 py-3 text-sm font-semibold transition cursor-pointer">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                      Upload Video
+                    </button>
+                    <button id="share-screen-btn" className="w-full flex items-center justify-center gap-2 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white px-4 py-3 text-sm font-semibold transition cursor-pointer">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                      Share Screen
+                    </button>
+                  </div>
+                  <button id="stop-share-btn" className="hidden mt-2 w-full flex items-center justify-center gap-2 rounded-2xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 text-rose-300 px-4 py-3 text-sm font-semibold transition cursor-pointer">
+                    Stop Screen Share
+                  </button>
+                  <input id="video-file-input" type="file" accept="video/*" className="hidden" />
+                </div>
+
+                {/* 2. Record Animation */}
+                <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
+                    2. Record Animation
+                    <span id="recording-badge" className="rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-emerald-200">Idle</span>
+                  </h2>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Animation Name</span>
+                      <input 
+                        id="animation-name" 
+                        type="text" 
+                        placeholder="animation_name" 
+                        defaultValue="motion_capture"
+                        className="h-[44px] w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 text-sm text-white outline-none focus:border-cyan-400 transition" 
+                      />
+                    </div>
+                    
+                    <div className="grid-2col">
+                      <button id="neutral-btn" className="w-full flex items-center justify-center gap-1.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-3 text-sm font-semibold transition cursor-pointer">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        Calibrate Hips
+                      </button>
+                      <button id="record-btn" className="w-full flex items-center justify-center gap-1.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-3 text-sm font-semibold transition cursor-pointer">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3" fill="currentColor"></circle></svg>
+                        Start Record
+                      </button>
+                    </div>
+
+                    <div className="grid-2col">
+                      <button id="clear-btn" className="w-full flex items-center justify-center gap-1.5 rounded-2xl bg-slate-900 hover:bg-slate-850 border border-white/5 text-slate-400 px-4 py-3 text-sm font-semibold transition cursor-pointer">
+                        Clear
+                      </button>
+                      <button id="save-library-btn" className="w-full flex items-center justify-center gap-1.5 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 px-4 py-3 text-sm font-semibold transition cursor-pointer">
+                        Save Library
+                      </button>
+                    </div>
+
+                    {/* Stats Grid */}
+                    <div className="mt-2 grid-2col border-t border-white/5 pt-3 text-[11px]">
+                      <div className="flex justify-between text-slate-500 border-r border-white/5 pr-2">
+                        <span>Tracked:</span>
+                        <span id="tracked-state" className="font-semibold text-slate-300">Waiting</span>
+                      </div>
+                      <div className="flex justify-between text-slate-500 pl-2">
+                        <span>Confidence:</span>
+                        <span id="confidence-value" className="font-semibold text-slate-300">0%</span>
+                      </div>
+                      <div className="flex justify-between text-slate-500 border-r border-white/5 pr-2 pt-1">
+                        <span>Frames:</span>
+                        <span id="frame-count" className="font-semibold text-slate-300">0</span>
+                      </div>
+                      <div className="flex justify-between text-slate-500 pl-2 pt-1">
+                        <span>Duration:</span>
+                        <span id="duration-value" className="font-semibold text-slate-300">0.0s</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Capture Options */}
+                <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+                    3. Capture Options
+                  </h2>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-white/5 bg-slate-950/40 px-3 py-2">
+                      <span className="text-xs font-medium text-white">Multi-character tracking</span>
+                      <input id="multi-character" type="checkbox" className="h-4 w-4 rounded border-white/20 bg-slate-950 text-cyan-400 focus:ring-cyan-400" />
+                    </div>
+
+                    <div className="grid-2col">
+                      <div>
+                        <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">Char Color 1</span>
+                        <input id="character-color" type="color" defaultValue="#5eead4" className="h-[44px] w-full cursor-pointer rounded-2xl border border-white/10 bg-slate-950/70 p-1" />
+                      </div>
+                      <div id="second-character-color-field" className="hidden">
+                        <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">Char Color 2</span>
+                        <input id="second-character-color" type="color" defaultValue="#a855f7" className="h-[44px] w-full cursor-pointer rounded-2xl border border-white/10 bg-slate-950/70 p-1" disabled />
+                      </div>
+                    </div>
+
+                    <div className="grid-2col">
+                      <div>
+                        <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">Sample Rate</span>
+                        <select id="sample-rate" className="h-[44px] w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 text-sm text-white outline-none focus:border-cyan-400 transition">
+                          <option value="10">10 fps</option>
+                          <option value="5">5 fps</option>
+                        </select>
+                      </div>
+                      <div>
+                        <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-500">Pose Backend</span>
+                        <select id="pose-backend" className="h-[44px] w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 text-sm text-white outline-none focus:border-cyan-400 transition">
+                          <option value="mediapipe-video">MediaPipe Video</option>
+                          <option value="mediapipe-image">MediaPipe Image</option>
+                          <option value="movenet">MoveNet</option>
+                          <option value="manual">Manual Assist</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="mb-1 flex items-center justify-between">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Pose Smoothing</span>
+                        <span id="smoothing-value" className="text-xs font-semibold text-cyan-300">0.55</span>
+                      </div>
+                      <input id="smoothing" type="range" min="0" max="0.85" step="0.05" defaultValue="0.55" className="w-full accent-cyan-400" />
+                    </div>
+
+                    <label id="root-motion-field" className="flex items-start gap-2.5 rounded-xl border border-white/5 bg-slate-950/40 p-2.5">
+                      <input id="root-motion" type="checkbox" defaultChecked className="mt-0.5 h-3.5 w-3.5 rounded border-white/20 bg-slate-950 text-cyan-400" />
+                      <span>
+                        <span className="block text-xs font-medium text-white">Track root motion</span>
+                        <span className="mt-0.5 block text-[10px] leading-relaxed text-slate-500">Moves hips in X/Y/Z. Turn off for static hips.</span>
+                      </span>
+                    </label>
+
+                    <label className="flex items-start gap-2.5 rounded-xl border border-white/5 bg-slate-950/40 p-2.5">
+                      <input id="upper-body-only" type="checkbox" className="mt-0.5 h-3.5 w-3.5 rounded border-white/20 bg-slate-950 text-cyan-400" />
+                      <span>
+                        <span className="block text-xs font-medium text-white">Upper-body source</span>
+                        <span className="mt-0.5 block text-[10px] leading-relaxed text-slate-500">Disables hip/leg tracking. Plants feet.</span>
+                      </span>
+                    </label>
+
+                    <div className="rounded-xl border border-white/5 bg-slate-950/40 p-2.5">
+                      <label className="flex items-start gap-2.5">
+                        <input id="focus-crop" type="checkbox" className="mt-0.5 h-3.5 w-3.5 rounded border-white/20 bg-slate-950 text-cyan-400" />
+                        <span>
+                          <span className="block text-xs font-medium text-white">Focus crop</span>
+                          <span className="mt-0.5 block text-[10px] leading-relaxed text-slate-500">Drag feed overlay to crop the tracked area.</span>
+                        </span>
+                      </label>
+                      <button id="reset-crop-btn" className="mt-2 w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-[10px] font-medium text-slate-300 hover:bg-white/10 transition cursor-pointer" type="button">
+                        Reset Crop
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Manual Assist Panel */}
+                <div id="manual-assist-panel" className="hidden rounded-2xl border border-amber-500/20 bg-amber-500/[0.02] p-4">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-3 flex items-center justify-between">
+                    Manual Assist
+                    <span className="text-[10px] font-semibold text-amber-400 bg-amber-400/15 px-2 py-0.5 rounded-full">
+                      Keys: <span id="assist-key-count">0</span>
+                    </span>
+                  </h2>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Target Character</span>
+                      <select id="assist-character" className="h-[44px] w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 text-sm text-white outline-none focus:border-amber-400 transition">
+                        <option value="0">Character 1</option>
+                        <option value="1">Character 2</option>
+                      </select>
+                    </div>
+
+                    <div className="grid-2col">
+                      <button id="add-assist-key-btn" className="w-full flex items-center justify-center gap-1.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 py-3 text-sm font-semibold transition cursor-pointer">
+                        Add Key
+                      </button>
+                      <button id="clear-assist-keys-btn" className="w-full flex items-center justify-center gap-1.5 rounded-2xl bg-slate-900 hover:bg-slate-850 border border-white/5 text-slate-400 px-4 py-3 text-sm font-semibold transition cursor-pointer">
+                        Clear Keys
+                      </button>
+                    </div>
+
+                    <button id="reset-assist-btn" className="w-full rounded-2xl border border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 text-amber-300 px-4 py-3 text-sm font-semibold transition cursor-pointer">
+                      Reset Assist
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </aside>
+
+            {/* Main Previews */}
+            <main className="grid min-h-0 grid-cols-1 gap-4 2xl:grid-cols-[1.08fr,0.92fr]">
+              {/* Pose Feed */}
+              <section className="glass-card flex min-h-0 flex-col rounded-[1.8rem] p-4">
+                <div className="mb-3 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Shared Video</p>
+                    <h2 className="mt-1 text-lg font-semibold text-white">Pose Feed</h2>
+                  </div>
+                </div>
+                <div id="video-stage" className="min-h-0 flex-1 rounded-[1.5rem] border border-white/10 bg-slate-950/90 relative aspect-video">
+                  <video id="source-video" autoPlay muted playsInline className="absolute inset-0 w-full h-full object-contain"></video>
+                  <canvas id="pose-overlay" className="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+                </div>
+              </section>
+
+              {/* Mapped Character */}
+              <section className="glass-card flex min-h-0 flex-col rounded-[1.8rem] p-4">
+                <div className="mb-3 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Rig Preview</p>
+                    <h2 className="mt-1 text-lg font-semibold text-white">Mapped Character</h2>
+                  </div>
+                </div>
+                <div className="mb-3">
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Character Model</span>
+                    <select id="character-model" className="h-[38px] w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 text-xs text-white outline-none transition focus:border-cyan-400">
+                      <option value="box">Box Character</option>
+                      <option value="lady-x-bot">Lady-X Bot</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="min-h-0 flex-1 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[radial-gradient(circle_at_top,_rgba(34,197,94,0.16),_transparent_36%),linear-gradient(180deg,_rgba(15,23,42,0.95),_rgba(2,6,23,1))] relative">
+                  <canvas id="preview-canvas" className="absolute inset-0 w-full h-full"></canvas>
+                </div>
+              </section>
+            </main>
+          </div>
+        </div>
+      </div>
     </main>
   );
 }
