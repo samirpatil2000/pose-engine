@@ -1,6 +1,7 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
         import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
         import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
+        import { GLTFExporter } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/exporters/GLTFExporter.js';
         import { FilesetResolver, PoseLandmarker } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21-rc.20250105/vision_bundle.mjs';
 
         const MIXAMO_BONE_MAP = {
@@ -218,6 +219,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
             ui.clearBtn = document.getElementById('clear-btn');
             ui.saveLibraryBtn = document.getElementById('save-library-btn');
             ui.exportHtmlBtn = document.getElementById('export-html-btn');
+            ui.exportGlbBtn = document.getElementById('export-glb-btn');
             ui.animationName = document.getElementById('animation-name');
             ui.characterColor = document.getElementById('character-color');
             ui.secondCharacterColor = document.getElementById('second-character-color');
@@ -261,6 +263,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
             ui.clearBtn?.addEventListener('click', clearRecording);
             ui.saveLibraryBtn?.addEventListener('click', saveAnimationToLibrary);
             ui.exportHtmlBtn?.addEventListener('click', exportAnimationAsHtml);
+            ui.exportGlbBtn?.addEventListener('click', exportAnimationAsGlb);
             ui.characterColor.addEventListener('input', () => setCharacterColorByIndex(0, ui.characterColor.value));
             ui.secondCharacterColor?.addEventListener('input', () => setCharacterColorByIndex(1, ui.secondCharacterColor.value));
             ui.multiCharacter?.addEventListener('change', handleMultiCharacterChanged);
@@ -2187,6 +2190,174 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
             }
         }
 
+        function exportAnimationAsGlb() {
+            try {
+                const asset = createAnimationAsset();
+                const name = ensureAnimationName();
+                const keyframes = asset.keyframes;
+                const times = keyframes.map(kf => kf.time);
+                const duration = times.length > 0 ? times[times.length - 1] : 0;
+
+                const characterCount = getCaptureCharacterCount();
+                const glbMode = isGlbModelMode();
+                
+                const activeModels = [];
+                for (let i = 0; i < characterCount; i++) {
+                    const model = glbMode ? glbModels[i] : previewRoots[i];
+                    if (model) activeModels.push(model);
+                }
+
+                if (activeModels.length === 0) {
+                    throw new Error('No active character model to export.');
+                }
+
+                // If multiple characters, wrap them in a Group. Otherwise just export the active model.
+                let exportRoot;
+                if (activeModels.length === 1) {
+                    exportRoot = activeModels[0];
+                } else {
+                    exportRoot = new THREE.Group();
+                    exportRoot.name = "SceneRoot";
+                    activeModels.forEach(m => exportRoot.add(m));
+                }
+
+                // Build tracks
+                const tracks = [];
+                for (let characterIndex = 0; characterIndex < characterCount; characterIndex++) {
+                    let restHipsPos = new THREE.Vector3(0, 0, 0);
+                    let scale = 1;
+                    if (glbMode) {
+                        const boneMap = glbBonesMaps[characterIndex] || {};
+                        const hipsBone = boneMap['Hips'];
+                        if (hipsBone) {
+                            restHipsPos.copy(hipsBone.position);
+                        }
+                        const model = glbModels[characterIndex];
+                        if (model) {
+                            scale = model.scale.x;
+                        }
+                    }
+
+                    BASE_JOINT_ORDER.forEach(baseName => {
+                        const jointName = getJointName(baseName, characterIndex);
+                        let targetNodeName;
+                        if (glbMode) {
+                            targetNodeName = MIXAMO_BONE_MAP[baseName];
+                        } else {
+                            targetNodeName = `${baseName}_${characterIndex}`;
+                        }
+                        if (!targetNodeName) return;
+
+                        const positionValues = [];
+                        const quaternionValues = [];
+                        let hasPosition = false;
+
+                        keyframes.forEach(kf => {
+                            const pose = kf.pose;
+                            const jointPose = pose[jointName];
+                            if (jointPose) {
+                                if (baseName === 'Hips') {
+                                    if (glbMode) {
+                                        const defaultHips = defaultPoseState?.[jointName];
+                                        const defaultHipsPos = defaultHips?.position ? new THREE.Vector3().fromArray(defaultHips.position) : getCharacterBasePosition(characterIndex);
+                                        const currentHipsPos = new THREE.Vector3().fromArray(jointPose.position);
+                                        const deltaPos = currentHipsPos.clone().sub(defaultHipsPos);
+                                        
+                                        const boneLocalPos = restHipsPos.clone().add(deltaPos.divideScalar(scale));
+                                        positionValues.push(boneLocalPos.x, boneLocalPos.y, boneLocalPos.z);
+                                    } else {
+                                        positionValues.push(jointPose.position[0], jointPose.position[1], jointPose.position[2]);
+                                    }
+                                    hasPosition = true;
+                                }
+
+                                quaternionValues.push(
+                                    jointPose.quaternion[0],
+                                    jointPose.quaternion[1],
+                                    jointPose.quaternion[2],
+                                    jointPose.quaternion[3]
+                                );
+                            } else {
+                                if (baseName === 'Hips') {
+                                    if (glbMode) {
+                                        positionValues.push(restHipsPos.x, restHipsPos.y, restHipsPos.z);
+                                    } else {
+                                        const basePos = getCharacterBasePosition(characterIndex);
+                                        positionValues.push(basePos.x, basePos.y, basePos.z);
+                                    }
+                                    hasPosition = true;
+                                }
+                                quaternionValues.push(0, 0, 0, 1);
+                            }
+                        });
+
+                        if (hasPosition) {
+                            const posTrack = new THREE.VectorKeyframeTrack(
+                                `${targetNodeName}.position`,
+                                times,
+                                positionValues
+                            );
+                            tracks.push(posTrack);
+                        }
+
+                        const rotTrack = new THREE.QuaternionKeyframeTrack(
+                            `${targetNodeName}.quaternion`,
+                            times,
+                            quaternionValues
+                        );
+                        tracks.push(rotTrack);
+                    });
+                }
+
+                const clip = new THREE.AnimationClip(name, duration, tracks);
+                const exporter = new GLTFExporter();
+                
+                setStatus('Exporting animation as GLB...', 'info');
+
+                exporter.parse(
+                    exportRoot,
+                    (gltfBuffer) => {
+                        const blob = new Blob([gltfBuffer], { type: 'application/octet-stream' });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        const safeName = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'motion-rip';
+
+                        link.href = url;
+                        link.download = `${safeName}.glb`;
+                        document.body.appendChild(link);
+                        link.click();
+                        link.remove();
+                        URL.revokeObjectURL(url);
+
+                        if (characterCount > 1) {
+                            activeModels.forEach(m => scene.add(m));
+                        }
+
+                        setStatus(`Animation "${name}" exported successfully as GLB.`, 'success');
+                    },
+                    (error) => {
+                        console.error('GLTF Export error:', error);
+                        if (characterCount > 1) {
+                            activeModels.forEach(m => scene.add(m));
+                        }
+                        setStatus('Error occurred during GLB export.', 'error');
+                    },
+                    { 
+                        binary: true,
+                        animations: [clip]
+                    }
+                );
+
+                if (characterCount > 1) {
+                    activeModels.forEach(m => scene.add(m));
+                }
+
+            } catch (error) {
+                console.error(error);
+                setStatus(error.message || 'Could not export as GLB.', 'error');
+            }
+        }
+
         function generateStandaloneHtml(asset) {
             return `<!DOCTYPE html>
 <html lang="en">
@@ -2970,6 +3141,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
             const disabled = recordedFrames.length === 0;
             if (ui.saveLibraryBtn) ui.saveLibraryBtn.disabled = disabled;
             if (ui.exportHtmlBtn) ui.exportHtmlBtn.disabled = disabled;
+            if (ui.exportGlbBtn) ui.exportGlbBtn.disabled = disabled;
         }
 
         function setStatus(message, tone = 'info') {

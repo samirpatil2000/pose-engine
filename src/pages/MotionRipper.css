@@ -388,7 +388,8 @@ body.motion-ripper-active {
   width: 100% !important;
 }
 
-.motion-ripper-host #export-html-btn {
+.motion-ripper-host #export-html-btn,
+.motion-ripper-host #export-glb-btn {
   background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%) !important; /* Purple to Pink gradient */
   color: #ffffff !important;
   border: none !important;
@@ -406,7 +407,8 @@ body.motion-ripper-active {
   width: 100% !important;
 }
 
-.motion-ripper-host #export-html-btn:hover {
+.motion-ripper-host #export-html-btn:hover,
+.motion-ripper-host #export-glb-btn:hover {
   background: linear-gradient(135deg, #c084fc 0%, #f472b6 100%) !important;
   box-shadow: 0 6px 16px rgba(236, 72, 153, 0.35) !important;
   transform: translateY(-1px) !important;
@@ -419,7 +421,8 @@ body.motion-ripper-active {
 }
 
 .motion-ripper-host #save-library-btn:disabled,
-.motion-ripper-host #export-html-btn:disabled {
+.motion-ripper-host #export-html-btn:disabled,
+.motion-ripper-host #export-glb-btn:disabled {
   background: rgba(255, 255, 255, 0.04) !important;
   color: rgba(255, 255, 255, 0.25) !important;
   border: 1px solid rgba(255, 255, 255, 0.05) !important;
@@ -526,6 +529,7 @@ body.motion-ripper-active {
 .motion-ripper-host #upload-video-btn:active,
 .motion-ripper-host #save-library-btn:active,
 .motion-ripper-host #export-html-btn:active,
+.motion-ripper-host #export-glb-btn:active,
 .motion-ripper-host #share-screen-btn:active,
 .motion-ripper-host #neutral-btn:active,
 .motion-ripper-host #clear-btn:active,
