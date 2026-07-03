@@ -3141,6 +3141,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
             const disabled = recordedFrames.length === 0;
             if (ui.saveLibraryBtn) ui.saveLibraryBtn.disabled = disabled;
             if (ui.exportHtmlBtn) ui.exportHtmlBtn.disabled = disabled;
+            if (ui.exportGlbBtn) ui.exportGlbBtn.disabled = disabled;
         }
 
         function setStatus(message, tone = 'info') {
