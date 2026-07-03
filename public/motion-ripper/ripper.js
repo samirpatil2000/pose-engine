@@ -2292,7 +2292,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
                         });
 
                         if (hasPosition) {
-                            const posTrack = new THREE.Vector3KeyframeTrack(
+                            const posTrack = new THREE.VectorKeyframeTrack(
                                 `${targetNodeName}.position`,
                                 times,
                                 positionValues
